@@ -32,7 +32,9 @@ function loadSound(name, src) {
 const imageFiles = [
   { name: "memomu", src: "assets/MEMOMU1.png" },
   { name: "monad", src: "assets/monad.png" },
+  { name: "sound", src: "assets/sound.png" },
 ];
+
 for (let i = 1; i <= 12; i++) imageFiles.push({ name: `img${i}`, src: `assets/image${i}.png` });
 for (let i = 1; i <= 6; i++) imageFiles.push({ name: `memimg${i}`, src: `assets/image${i}.png` });
 for (let i = 1; i <= 30; i++) imageFiles.push({ name: `mmimg${i}`, src: `assets/image${(i % 12) + 1}.png` });
@@ -54,27 +56,35 @@ async function loadAssets() {
 
 // --- BUTTONS ---
 class Button {
-  constructor(label, x, y, w = 280, h = 56) {
+  constructor(label, x, y, w = 280, h = 56, img = null) {
     this.label = label;
     this.x = x;
     this.y = y;
     this.w = w;
     this.h = h;
+    this.img = img; // new: optional image name
   }
   draw() {
     ctx.save();
-    ctx.fillStyle = "#ffb6c1";
-    ctx.strokeStyle = "#ff69b4";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h, 16);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#222";
-    ctx.font = "32px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(this.label, this.x, this.y);
+    if (!this.img) {
+      ctx.strokeStyle = "#ff69b4";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h, 16);
+      ctx.fillStyle = "#ffb6c1";
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#222";
+      ctx.font = "32px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(this.label, this.x, this.y);
+    } else {
+      // Only draw the image, no border/fill
+      if (assets.images[this.img]) {
+        ctx.drawImage(assets.images[this.img], this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
+      }
+    }
     ctx.restore();
   }
   isInside(mx, my) {
@@ -214,24 +224,22 @@ function createGrid(rows, cols, tileSize = 105, gap = 12, startY = 180) {
 // --- BUTTONS SETUP ---
 function setupButtons() {
   menuButtons = [
-    new Button("NEW GAME", WIDTH / 2, 425, 400, 70),
-    new Button(soundOn ? "SOUND ON" : "SOUND OFF", WIDTH - 100, 55, 170, 44),
-    new Button("QUIT", WIDTH / 2, 504, 250, 60),
+    new Button("NEW GAME", WIDTH / 2, 425, 240, 70),
+    new Button("", WIDTH - 100, 55, 55, 44, "sound"),
+    new Button("QUIT", WIDTH / 2, 504, 150, 60),
   ];
   let modeY = 295 + 85;
-  let modeGap = 85;
+  let modeGap = 60;
   modeButtons = [
-    new Button("MUSIC MEMORY", WIDTH / 2, modeY, 340, 65),
-    new Button("MEMORY", WIDTH / 2, modeY + modeGap, 340, 65),
-    new Button("MONLUCK", WIDTH / 2, modeY + modeGap * 2, 340, 65),
-    new Button("BATTLE", WIDTH / 2, modeY + modeGap * 3, 340, 65),
-    new Button("SOUND", WIDTH - 100, 55, 170, 44),
-    new Button("BACK", WIDTH / 2, modeY + modeGap * 4 + 20, 340, 65)
+    new Button("MUSIC MEMORY", WIDTH / 2, modeY, 280, 50),
+    new Button("MEMORY", WIDTH / 2, modeY + modeGap, 200, 50),
+    new Button("MONLUCK", WIDTH / 2, modeY + modeGap * 2, 200, 50),
+    new Button("BATTLE", WIDTH / 2, modeY + modeGap * 3, 200, 50),
+    new Button("", WIDTH - 100, 55, 55, 44, "sound"),
+    new Button("BACK", WIDTH / 2, modeY + modeGap * 4, 150, 50)
   ];
   musicMemButtons = [
-    new Button("BACK", WIDTH / 2 - 210, HEIGHT - 60, 180, 48),
-    new Button("PLAY MELODY", WIDTH / 2, HEIGHT - 60, 230, 48),
-    new Button("QUIT", WIDTH / 2 + 210, HEIGHT - 60, 180, 48)
+    new Button("QUIT", WIDTH / 2, HEIGHT - 60, 180, 48)
   ];
   let memY = 300;
   memoryMenuButtons = [
@@ -273,7 +281,7 @@ function startMusicMemoryGame() {
   setupMusicMemRound();
 }
 function setupMusicMemRound() {
-  musicMem.grid = createGrid(3, 4, 105, 12, 180);
+  musicMem.grid = createGrid(3, 4, 115, 28, 140);
   let melodyLen = Math.min(musicMem.currentRound + 2, 8);
   let tileIndices = Array.from({ length: 12 }, (_, i) => i + 1);
   musicMem.sequence = [];
@@ -285,70 +293,31 @@ function setupMusicMemRound() {
   musicMem.playingMelody = false;
   musicMem.allowInput = false;
   musicMem.feedback = "";
-  // Reset tile states
-  musicMem.grid.forEach(tile => {
-    tile.selected = false;
-    tile.highlight = false;
-    tile.feedback = null;
-  });
 }
 function playMelody() {
-  if (musicMem.playingMelody) return; // Prevent multiple simultaneous melodies
-  
   musicMem.playingMelody = true;
   musicMem.allowInput = false;
-  musicMem.feedback = "Listen carefully...";
-  
   let i = 0;
-  const noteInterval = 650; // Improved timing for better synchronization
-  const noteHighlightDuration = 450;
-  
   function playStep() {
     if (i < musicMem.sequence.length) {
       let idx = musicMem.sequence[i];
       let tile = musicMem.grid[idx - 1];
-      
-      // Clear all highlights first
-      musicMem.grid.forEach(t => t.highlight = false);
-      
-      // Highlight current tile
       tile.highlight = true;
       drawMusicMemory();
-      
-      // Play sound with better error handling
       let sfx = assets.sounds["yupi"];
-      if (soundOn && sfx) {
-        try {
-          sfx.currentTime = 0;
-          // Create a new audio instance for better playback control
-          let audioClone = sfx.cloneNode();
-          audioClone.volume = 0.7;
-          audioClone.play().catch(e => console.log("Audio play failed:", e));
-        } catch (e) {
-          console.log("Audio error:", e);
-        }
-      }
-      
+      if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
       setTimeout(() => {
         tile.highlight = false;
         drawMusicMemory();
         i++;
-        
-        if (i < musicMem.sequence.length) {
-          setTimeout(playStep, noteInterval - noteHighlightDuration);
-        } else {
-          // Melody finished
-          setTimeout(() => {
-            musicMem.playingMelody = false;
-            musicMem.allowInput = true;
-            musicMem.feedback = "Your turn! Click the tiles in order.";
-            drawMusicMemory();
-          }, 200);
-        }
-      }, noteHighlightDuration);
+        setTimeout(playStep, 350);
+      }, 500);
+    } else {
+      musicMem.playingMelody = false;
+      musicMem.allowInput = true;
+      drawMusicMemory();
     }
   }
-  
   playStep();
 }
 
@@ -553,7 +522,6 @@ function drawMenu() {
   ctx.fillStyle = "#ff69b4";
   ctx.font = "48px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("MEMOMU", WIDTH / 2, 350);
   menuButtons.forEach(b => b.draw());
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
@@ -567,7 +535,6 @@ function drawModeMenu() {
   ctx.fillStyle = "#ff69b4";
   ctx.font = "44px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("Choose Game Mode", WIDTH / 2, 340);
   modeButtons.forEach(b => b.draw());
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
@@ -591,69 +558,27 @@ function drawMusicMemory() {
   ctx.fillStyle = "#ff69b4";
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("Music Memory", WIDTH / 2, 90);
   ctx.font = "22px Arial";
   ctx.fillStyle = "#fff";
-  ctx.fillText("Round " + musicMem.currentRound + " / " + musicMem.maxRounds, WIDTH / 2, 135);
-  
-  // Show sequence progress
-  if (musicMem.allowInput) {
-    ctx.font = "18px Arial";
-    ctx.fillStyle = "#ffb6c1";
-    ctx.fillText(`Progress: ${musicMem.userSequence.length}/${musicMem.sequence.length}`, WIDTH / 2, 155);
-  }
-  
+  ctx.fillText("Round " + musicMem.currentRound + " / " + musicMem.maxRounds, WIDTH / 10, 70);
   musicMem.grid.forEach(tile => {
     ctx.save();
     let img = assets.images["img" + tile.idx];
     if (img) ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
     else { ctx.fillStyle = "#333"; ctx.fillRect(tile.x, tile.y, tile.size, tile.size); }
-    
-    // Enhanced visual feedback
-    if (tile.highlight) { 
-      ctx.strokeStyle = "#ff69b4"; 
-      ctx.lineWidth = 8;
-      ctx.shadowColor = "#ff69b4";
-      ctx.shadowBlur = 10;
-    }
-    else if (tile.selected) { 
-      ctx.strokeStyle = "#00f2ff"; 
-      ctx.lineWidth = 5; 
-      ctx.shadowColor = "#00f2ff";
-      ctx.shadowBlur = 5;
-    }
-    else if (tile.feedback) {
-      ctx.strokeStyle = tile.feedback;
-      ctx.lineWidth = 6;
-      ctx.shadowColor = tile.feedback;
-      ctx.shadowBlur = 8;
-    }
-    else { 
-      ctx.strokeStyle = "#262626"; 
-      ctx.lineWidth = 2; 
-      ctx.shadowBlur = 0;
-    }
-    
+    if (tile.highlight) { ctx.strokeStyle = "#ff69b4"; ctx.lineWidth = 6; }
+    else if (tile.selected) { ctx.strokeStyle = "#00f2ff"; ctx.lineWidth = 4; }
+    else { ctx.strokeStyle = "#262626"; ctx.lineWidth = 2; }
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
-    
-    // Add tile number for better identification
-    if (!tile.highlight && musicMem.allowInput) {
-      ctx.font = "16px Arial";
-      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      ctx.fillText(tile.idx.toString(), tile.x + tile.size - 15, tile.y + 20);
-    }
-    
     ctx.restore();
   });
-  
   musicMemButtons.forEach(b => b.draw());
   ctx.font = "28px Arial";
   ctx.fillStyle = "#fff";
   ctx.fillText(musicMem.feedback, WIDTH / 2, HEIGHT - 120);
   ctx.font = "21px Arial";
   ctx.fillStyle = "#ffb6c1";
-  ctx.fillText("Score: " + musicMem.score, WIDTH / 2, HEIGHT - 80);
-  
+  ctx.fillText("Score: " + musicMem.score, WIDTH / 11, HEIGHT - 600);
   if (musicMem.showRoundSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1002,10 +927,38 @@ canvas.addEventListener("click", function (e) {
     }
     else if (menuButtons[2].isInside(mx, my)) { window.close(); }
   } else if (gameState === "mode") {
-    if (modeButtons[0].isInside(mx, my)) { gameState = "musicmem"; startMusicMemoryGame(); }
-    else if (modeButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
-    else if (modeButtons[2].isInside(mx, my)) { gameState = "monluck"; startMonluckGame(); }
-    else if (modeButtons[3].isInside(mx, my)) { gameState = "battle"; resetBattleGame(); }
+    if (modeButtons[0].isInside(mx, my)) {
+      let music = assets.sounds["music"];
+      if (music) {
+        music.pause();
+        music.currentTime = 0;
+      }
+      gameState = "musicmem"; startMusicMemoryGame();
+    }
+    else if (modeButtons[1].isInside(mx, my)) {
+      let music = assets.sounds["music"];
+      if (music) {
+        music.pause();
+        music.currentTime = 0;
+      }
+      gameState = "memory_menu";
+    }
+    else if (modeButtons[2].isInside(mx, my)) {
+      let music = assets.sounds["music"];
+      if (music) {
+        music.pause();
+        music.currentTime = 0;
+      }
+      gameState = "monluck"; startMonluckGame();
+    }
+    else if (modeButtons[3].isInside(mx, my)) {
+      let music = assets.sounds["music"];
+      if (music) {
+        music.pause();
+        music.currentTime = 0;
+      }
+      gameState = "battle"; resetBattleGame();
+    }
     else if (modeButtons[4].isInside(mx, my)) {
       soundOn = !soundOn;
       modeButtons[4].label = soundOn ? "SOUND ON" : "SOUND OFF";
@@ -1031,46 +984,12 @@ canvas.addEventListener("click", function (e) {
           if (!tile.selected && musicMem.userSequence.length < musicMem.sequence.length) {
             tile.selected = true;
             musicMem.userSequence.push(tile.idx);
-            
-            // Provide immediate audio feedback
             let sfx = assets.sounds["kuku"];
-            if (soundOn && sfx) { 
-              try { 
-                sfx.currentTime = 0; 
-                let audioClone = sfx.cloneNode();
-                audioClone.volume = 0.5;
-                audioClone.play(); 
-              } catch (e) { console.log("Audio error:", e); } 
-            }
-            
-            // Check if sequence is complete
+            if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
             if (musicMem.userSequence.length === musicMem.sequence.length) {
               musicMem.allowInput = false;
-              musicMem.feedback = "Checking sequence...";
-              setTimeout(() => checkMusicMemResult(), 800); // Small delay for better UX
-            } else {
-              // Update feedback to show progress
-              musicMem.feedback = `Good! ${musicMem.userSequence.length}/${musicMem.sequence.length} tiles selected`;
+              checkMusicMemResult();
             }
-            
-            drawMusicMemory();
-            break;
-          } else if (tile.selected) {
-            // Provide feedback that tile is already selected
-            musicMem.feedback = "Tile already selected!";
-            let sfx = assets.sounds["buuuu"];
-            if (soundOn && sfx) { 
-              try { 
-                sfx.currentTime = 0; 
-                let audioClone = sfx.cloneNode();
-                audioClone.volume = 0.3;
-                audioClone.play(); 
-              } catch (e) { console.log("Audio error:", e); } 
-            }
-            setTimeout(() => {
-              musicMem.feedback = `Progress: ${musicMem.userSequence.length}/${musicMem.sequence.length}`;
-              drawMusicMemory();
-            }, 1000);
             drawMusicMemory();
             break;
           }
@@ -1372,93 +1291,38 @@ function handleBattleGridClick(mx, my) {
 // --- MUSIC MEMORY RESULT CHECK ---
 function checkMusicMemResult() {
   let correct = true;
-  let correctCount = 0;
-  
-  // Check each input against the sequence
   for (let i = 0; i < musicMem.sequence.length; i++) {
-    if (i < musicMem.userSequence.length) {
-      if (musicMem.userSequence[i] === musicMem.sequence[i]) {
-        correctCount++;
-      } else {
-        correct = false;
-        break;
-      }
-    } else {
+    if (musicMem.userSequence[i] !== musicMem.sequence[i]) {
       correct = false;
       break;
     }
   }
-  
-  // Provide visual feedback on tiles
-  musicMem.grid.forEach((tile, idx) => {
-    const tileNum = idx + 1;
-    const userIndex = musicMem.userSequence.indexOf(tileNum);
-    const correctIndex = musicMem.sequence.indexOf(tileNum);
-    
-    if (userIndex !== -1) {
-      if (userIndex < musicMem.sequence.length && musicMem.sequence[userIndex] === tileNum) {
-        tile.feedback = "#00ff00"; // Green for correct
-      } else {
-        tile.feedback = "#ff0000"; // Red for wrong
-      }
-    }
-  });
-  
-  if (correct && correctCount === musicMem.sequence.length) {
-    musicMem.feedback = `Perfect! +${correctCount} points`;
-    musicMem.score += correctCount;
+  if (correct) {
+    musicMem.feedback = "Correct!";
+    musicMem.score += 1;
     let sfx = assets.sounds["yupi"];
-    if (soundOn && sfx) { 
-      try { 
-        sfx.currentTime = 0; 
-        let audioClone = sfx.cloneNode();
-        audioClone.volume = 0.8;
-        audioClone.play(); 
-      } catch (e) { console.log("Audio error:", e); } 
-    }
-    setTimeout(() => {
-      clearTileFeedback();
-      nextMusicMemRound();
-    }, 1500);
+    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+    setTimeout(() => nextMusicMemRound(), 1100);
   } else {
-    musicMem.feedback = `Wrong sequence! Got ${correctCount}/${musicMem.sequence.length} correct`;
+    musicMem.feedback = "Wrong!";
     let sfx = assets.sounds["buuuu"];
-    if (soundOn && sfx) { 
-      try { 
-        sfx.currentTime = 0; 
-        let audioClone = sfx.cloneNode();
-        audioClone.volume = 0.6;
-        audioClone.play(); 
-      } catch (e) { console.log("Audio error:", e); } 
-    }
-    setTimeout(() => {
-      clearTileFeedback();
-      nextMusicMemRound();
-    }, 2000);
+    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+    setTimeout(() => nextMusicMemRound(), 1600);
   }
   drawMusicMemory();
 }
-
-function clearTileFeedback() {
-  musicMem.grid.forEach(tile => {
-    tile.selected = false;
-    tile.highlight = false;
-    tile.feedback = null;
-  });
-}
-
 function nextMusicMemRound() {
   if (musicMem.currentRound < musicMem.maxRounds) {
     musicMem.currentRound++;
     musicMem.showRoundSplash = true;
     musicMem.splashTimer = 45;
-    musicMem.splashMsg = `Round ${musicMem.currentRound}`;
+    musicMem.splashMsg = "Round " + musicMem.currentRound;
     setupMusicMemRound();
   } else {
     musicMem.showRoundSplash = true;
     musicMem.splashTimer = 80;
-    musicMem.splashMsg = `Game Complete!\nFinal Score: ${musicMem.score}`;
-    setTimeout(() => { gameState = "mode"; }, 2500);
+    musicMem.splashMsg = "Game Over!\nScore: " + musicMem.score;
+    setTimeout(() => { gameState = "mode"; }, 2200);
   }
   drawMusicMemory();
 }
