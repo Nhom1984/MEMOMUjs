@@ -47,6 +47,11 @@ const soundFiles = [
   { name: "music", src: "assets/MEMOMU.mp3" }
 ];
 
+// Add note sound files for Music Memory mode
+for (let i = 1; i <= 8; i++) {
+  soundFiles.push({ name: `note${i}`, src: `assets/note${i}.mp3` });
+}
+
 async function loadAssets() {
   let promises = [];
   for (let file of imageFiles) promises.push(loadImage(file.name, file.src));
@@ -94,8 +99,8 @@ class Button {
 }
 
 // --- GAME STATE ---
-let gameState = "loading"; // loading, menu, mode, musicmem, memory_menu, memory_classic, memory_memomu, monluck, battle
-let menuButtons = [], modeButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [];
+let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic, memory_memomu, monluck, battle
+let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [];
 let soundOn = true;
 
 // --- MUSIC MEMORY MODE DATA ---
@@ -104,7 +109,7 @@ let musicMem = {
   sequence: [],
   userSequence: [],
   currentRound: 1,
-  maxRounds: 5,
+  maxRounds: 10,
   playingMelody: false,
   allowInput: false,
   score: 0,
@@ -113,6 +118,21 @@ let musicMem = {
   showRoundSplash: true,
   splashTimer: 0,
   splashMsg: "",
+  
+  // New 3-phase structure
+  phase: "memory", // memory, deception, guessing
+  imageAssignments: {}, // maps image indices (1-18) to note numbers (1-8)
+  assignedImages: [], // the 8 images selected for this game
+  decoyImages: [], // unused images for decoy tiles
+  memorySequence: [], // correct sequence from memory phase
+  deceptionSequence: [], // wrong sequence for deception phase
+  phaseTimer: 0,
+  phaseStartTime: 0,
+  timeLimit: 0,
+  showPhaseMessage: false,
+  phaseMessage: "",
+  phaseMessageTimer: 0,
+  gameStarted: false
 };
 
 // --- CLASSIC MEMORY MODE DATA ---
@@ -238,8 +258,13 @@ function setupButtons() {
     new Button("", WIDTH - 100, 55, 55, 44, "sound"),
     new Button("BACK", WIDTH / 2, modeY + modeGap * 4, 150, 50)
   ];
+  musicMemRulesButtons = [
+    new Button("Got it!", WIDTH / 2 - 100, HEIGHT - 80, 180, 50),
+    new Button("MENU", WIDTH / 2 + 100, HEIGHT - 80, 180, 50)
+  ];
   musicMemButtons = [
-    new Button("QUIT", WIDTH / 2, HEIGHT - 60, 180, 48)
+    new Button("START", WIDTH / 2, HEIGHT - 100, 180, 48),
+    new Button("QUIT", WIDTH / 2, HEIGHT - 50, 180, 48)
   ];
   let memY = 300;
   memoryMenuButtons = [
@@ -276,49 +301,333 @@ function startMusicMemoryGame() {
   musicMem.currentRound = 1;
   musicMem.score = 0;
   musicMem.showRoundSplash = true;
-  musicMem.splashTimer = 45;
+  musicMem.splashTimer = 60;
   musicMem.splashMsg = "Round 1";
+  musicMem.gameStarted = false;
+  musicMem.phase = "memory";
+  
+  // Create random image-to-note assignments (8 images from 1-18)
+  setupImageAssignments();
   setupMusicMemRound();
 }
+
+function setupImageAssignments() {
+  // Select 8 random images from 1-18
+  let allImages = [];
+  for (let i = 1; i <= 18; i++) {
+    allImages.push(i);
+  }
+  
+  // Shuffle and pick 8
+  allImages = allImages.sort(() => Math.random() - 0.5);
+  musicMem.assignedImages = allImages.slice(0, 8);
+  
+  // Create assignments mapping each selected image to a note (1-8)
+  musicMem.imageAssignments = {};
+  for (let i = 0; i < 8; i++) {
+    musicMem.imageAssignments[musicMem.assignedImages[i]] = i + 1;
+  }
+  
+  // Store remaining images for decoys
+  musicMem.decoyImages = allImages.slice(8);
+}
+
 function setupMusicMemRound() {
   musicMem.grid = createGrid(3, 4, 115, 28, 140);
-  let melodyLen = Math.min(musicMem.currentRound + 2, 8);
-  let tileIndices = Array.from({ length: 12 }, (_, i) => i + 1);
-  musicMem.sequence = [];
-  for (let i = 0; i < melodyLen; i++) {
-    let idx = tileIndices[Math.floor(Math.random() * tileIndices.length)];
-    musicMem.sequence.push(idx);
+  
+  // Determine how many images for this round
+  let imageCount = getRoundImageCount(musicMem.currentRound);
+  let repetitions = getRoundRepetitions(musicMem.currentRound);
+  
+  // Create memory sequence (using assigned images)
+  musicMem.memorySequence = [];
+  for (let i = 0; i < imageCount; i++) {
+    let imgIdx = musicMem.assignedImages[i % musicMem.assignedImages.length];
+    musicMem.memorySequence.push(imgIdx);
   }
+  
+  // Create deception sequence (different order of same images)
+  musicMem.deceptionSequence = [...musicMem.memorySequence].sort(() => Math.random() - 0.5);
+  
+  // Fill grid: place assigned images + fill remaining with decoys
+  fillGridForRound();
+  
   musicMem.userSequence = [];
   musicMem.playingMelody = false;
   musicMem.allowInput = false;
   musicMem.feedback = "";
+  musicMem.phaseTimer = 0;
+  musicMem.timeLimit = getRoundTimeLimit(musicMem.currentRound);
 }
-function playMelody() {
+
+function getRoundImageCount(round) {
+  if (round === 1) return 3;
+  if (round >= 2 && round <= 3) return 4;
+  if (round >= 4 && round <= 7) return 5;
+  if (round === 8) return 6;
+  if (round === 9) return 7;
+  if (round === 10) return 8;
+  return 3;
+}
+
+function getRoundRepetitions(round) {
+  if (round >= 1 && round <= 3) return 1; // EASY
+  if (round >= 4 && round <= 7) return 2; // MEDIUM
+  if (round >= 8 && round <= 10) return 3; // PRO
+  return 1;
+}
+
+function getRoundTimeLimit(round) {
+  if (round >= 1 && round <= 3) return 10; // 10s for rounds 1-3
+  if (round >= 4 && round <= 7) return 15; // 15s for rounds 4-7
+  if (round >= 8 && round <= 10) return 20; // 20s for rounds 8-10
+  return 10;
+}
+
+function fillGridForRound() {
+  let imageCount = getRoundImageCount(musicMem.currentRound);
+  let usedImages = musicMem.memorySequence.slice(0, imageCount);
+  
+  // Clear grid image assignments
+  musicMem.grid.forEach(tile => {
+    tile.imageIdx = null;
+    tile.isDecoy = true;
+    tile.revealed = false;
+    tile.selected = false;
+    tile.highlight = false;
+  });
+  
+  // Place the required images randomly in grid
+  let availablePositions = [...Array(12).keys()];
+  
+  for (let imgIdx of usedImages) {
+    let pos = availablePositions.splice(Math.floor(Math.random() * availablePositions.length), 1)[0];
+    musicMem.grid[pos].imageIdx = imgIdx;
+    musicMem.grid[pos].isDecoy = false;
+  }
+  
+  // Fill remaining positions with random decoy images
+  for (let pos of availablePositions) {
+    let decoyIdx = musicMem.decoyImages[Math.floor(Math.random() * musicMem.decoyImages.length)];
+    musicMem.grid[pos].imageIdx = decoyIdx;
+    musicMem.grid[pos].isDecoy = true;
+  }
+}
+
+function startMemoryPhase() {
+  musicMem.gameStarted = true;
+  musicMem.phase = "memory";
+  musicMem.showPhaseMessage = true;
+  musicMem.phaseMessage = "Listen carefully and remember";
+  musicMem.phaseMessageTimer = 60; // 2 seconds
+  musicMem.phaseTimer = 0;
+  
+  setTimeout(() => {
+    playMemorySequence();
+  }, 2000);
+}
+
+function playMemorySequence() {
   musicMem.playingMelody = true;
   musicMem.allowInput = false;
+  
+  let repetitions = getRoundRepetitions(musicMem.currentRound);
+  let sequence = [];
+  
+  // Repeat the memory sequence based on difficulty
+  for (let r = 0; r < repetitions; r++) {
+    sequence = sequence.concat(musicMem.memorySequence);
+  }
+  
   let i = 0;
   function playStep() {
-    if (i < musicMem.sequence.length) {
-      let idx = musicMem.sequence[i];
-      let tile = musicMem.grid[idx - 1];
-      tile.highlight = true;
+    if (i < sequence.length) {
+      let imgIdx = sequence[i];
+      
+      // Find and highlight the tile with this image
+      for (let tile of musicMem.grid) {
+        if (tile.imageIdx === imgIdx && !tile.isDecoy) {
+          tile.highlight = true;
+          tile.revealed = true;
+          break;
+        }
+      }
+      
       drawMusicMemory();
-      let sfx = assets.sounds["yupi"];
-      if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+      
+      // Play the note sound for this image
+      let noteNum = musicMem.imageAssignments[imgIdx];
+      let sfx = assets.sounds[`note${noteNum}`];
+      if (soundOn && sfx) { 
+        try { sfx.currentTime = 0; sfx.play(); } catch (e) { } 
+      }
+      
       setTimeout(() => {
-        tile.highlight = false;
+        // Turn off highlight
+        for (let tile of musicMem.grid) {
+          tile.highlight = false;
+          tile.revealed = false;
+        }
         drawMusicMemory();
         i++;
-        setTimeout(playStep, 350);
-      }, 500);
+        setTimeout(playStep, 400);
+      }, 600);
     } else {
       musicMem.playingMelody = false;
-      musicMem.allowInput = true;
-      drawMusicMemory();
+      setTimeout(() => startDeceptionPhase(), 1000);
     }
   }
   playStep();
+}
+
+function startDeceptionPhase() {
+  musicMem.phase = "deception";
+  musicMem.showPhaseMessage = true;
+  musicMem.phaseMessage = "Don't get yourself fooled";
+  musicMem.phaseMessageTimer = 60; // 2 seconds
+  
+  setTimeout(() => {
+    playDeceptionSequence();
+  }, 2000);
+}
+
+function playDeceptionSequence() {
+  let repetitions = getRoundRepetitions(musicMem.currentRound);
+  let sequence = [];
+  
+  // Repeat the deception sequence based on difficulty
+  for (let r = 0; r < repetitions; r++) {
+    sequence = sequence.concat(musicMem.deceptionSequence);
+  }
+  
+  let i = 0;
+  function playStep() {
+    if (i < sequence.length) {
+      let imgIdx = sequence[i];
+      
+      // Find and highlight the tile with this image (might be in different position)
+      for (let tile of musicMem.grid) {
+        if (tile.imageIdx === imgIdx && !tile.isDecoy) {
+          tile.highlight = true;
+          tile.revealed = true;
+          break;
+        }
+      }
+      
+      drawMusicMemory();
+      
+      // Play a different note or same note for deception
+      let noteNum = musicMem.imageAssignments[imgIdx];
+      let sfx = assets.sounds[`note${noteNum}`];
+      if (soundOn && sfx) { 
+        try { sfx.currentTime = 0; sfx.play(); } catch (e) { } 
+      }
+      
+      setTimeout(() => {
+        // Turn off highlight
+        for (let tile of musicMem.grid) {
+          tile.highlight = false;
+          tile.revealed = false;
+        }
+        drawMusicMemory();
+        i++;
+        setTimeout(playStep, 400);
+      }, 600);
+    } else {
+      setTimeout(() => startGuessingPhase(), 1000);
+    }
+  }
+  playStep();
+}
+
+function startGuessingPhase() {
+  musicMem.phase = "guessing";
+  musicMem.showPhaseMessage = true;
+  musicMem.phaseMessage = "Now play!";
+  musicMem.phaseMessageTimer = 60; // 2 seconds
+  musicMem.allowInput = true;
+  musicMem.userSequence = [];
+  musicMem.phaseStartTime = performance.now() / 1000;
+  
+  // Reveal all tiles
+  musicMem.grid.forEach(tile => {
+    tile.revealed = true;
+    tile.selected = false;
+  });
+  
+  drawMusicMemory();
+}
+
+function handleMusicMemTileClick(tileIdx) {
+  if (!musicMem.allowInput || musicMem.phase !== "guessing") return;
+  
+  let tile = musicMem.grid[tileIdx - 1];
+  if (!tile || tile.selected) return;
+  
+  tile.selected = true;
+  
+  // Check if this is a decoy tile
+  if (tile.isDecoy) {
+    // Wrong click - end round immediately
+    let sfx = assets.sounds["buuuu"];
+    if (soundOn && sfx) { 
+      try { sfx.currentTime = 0; sfx.play(); } catch (e) { } 
+    }
+    
+    musicMem.feedback = "Wrong! Round ended.";
+    musicMem.allowInput = false;
+    
+    setTimeout(() => nextMusicMemRound(), 1500);
+    drawMusicMemory();
+    return;
+  }
+  
+  musicMem.userSequence.push(tile.imageIdx);
+  
+  // Check if this click is in the right order
+  let expectedImg = musicMem.memorySequence[musicMem.userSequence.length - 1];
+  if (tile.imageIdx !== expectedImg) {
+    // Wrong order - end round immediately
+    let sfx = assets.sounds["buuuu"];
+    if (soundOn && sfx) { 
+      try { sfx.currentTime = 0; sfx.play(); } catch (e) { } 
+    }
+    
+    musicMem.feedback = "Wrong order! Round ended.";
+    musicMem.allowInput = false;
+    
+    setTimeout(() => nextMusicMemRound(), 1500);
+    drawMusicMemory();
+    return;
+  }
+  
+  // Correct click
+  let noteNum = musicMem.imageAssignments[tile.imageIdx];
+  let sfx = assets.sounds[`note${noteNum}`];
+  if (soundOn && sfx) { 
+    try { sfx.currentTime = 0; sfx.play(); } catch (e) { } 
+  }
+  
+  musicMem.score += 1; // +1 point per correct hit
+  
+  // Check if round is complete
+  if (musicMem.userSequence.length === musicMem.memorySequence.length) {
+    // Perfect round!
+    let bonusPoints = musicMem.memorySequence.length;
+    musicMem.score += bonusPoints;
+    
+    let sfx = assets.sounds["yupi"];
+    if (soundOn && sfx) { 
+      try { sfx.currentTime = 0; sfx.play(); } catch (e) { } 
+    }
+    
+    musicMem.feedback = `Perfect! +${bonusPoints} bonus points`;
+    musicMem.allowInput = false;
+    
+    setTimeout(() => nextMusicMemRound(), 1500);
+  }
+  
+  drawMusicMemory();
 }
 
 // --- CLASSIC MEMORY MODE LOGIC ---
@@ -553,32 +862,181 @@ function drawMemoryMenu() {
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
 }
+function drawMusicMemoryRules() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  
+  // Background
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  
+  // Title
+  ctx.fillStyle = "#ff69b4";
+  ctx.font = "44px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Music Memory Rules", WIDTH / 2, 60);
+  
+  // Large light pink table
+  const tableX = 50;
+  const tableY = 100;
+  const tableW = WIDTH - 100;
+  const tableH = HEIGHT - 200;
+  
+  // Table background
+  ctx.fillStyle = "#ffb6c1";
+  ctx.strokeStyle = "#ff69b4";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(tableX, tableY, tableW, tableH, 12);
+  ctx.fill();
+  ctx.stroke();
+  
+  // Rules text
+  ctx.fillStyle = "#000";
+  ctx.font = "22px Arial";
+  ctx.textAlign = "left";
+  
+  const rules = [
+    "Game has 10 rounds. Each round has 3 phases:",
+    "",
+    "• Memory phase: Remember the right order and faces of images.",
+    "• Deceptive phase: Game will show deceiving order and images to fool you.",
+    "• Guessing phase: Click right images in right order.",
+    "",
+    "• Every right hit image gives you 1 point.",
+    "• If round is perfect, get additional X points, where X is the number of images",
+    "  shown in that round.",
+    "• If player hits a wrong image or clicks in the wrong order, the round ends",
+    "  immediately.",
+    "",
+    "Difficulty Levels:",
+    "• Rounds 1-3 (EASY): Images appear only once in memory and deception phases.",
+    "• Rounds 4-7 (MEDIUM): Images appear twice in memory and deception phases.", 
+    "• Rounds 8-10 (PRO): Images appear thrice in memory and deception phases.",
+    "",
+    "Time Limits: 10s (rounds 1-3), 15s (rounds 4-7), 20s (rounds 8-10)"
+  ];
+  
+  let y = tableY + 40;
+  for (let rule of rules) {
+    ctx.fillText(rule, tableX + 20, y);
+    y += 28;
+  }
+  
+  // Draw buttons
+  musicMemRulesButtons.forEach(b => b.draw());
+  
+  // Copyright
+  ctx.font = "20px Arial";
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "right";
+  ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+}
+
 function drawMusicMemory() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   ctx.fillStyle = "#ff69b4";
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
+  
+  // Round and phase info
   ctx.font = "22px Arial";
   ctx.fillStyle = "#fff";
   ctx.fillText("Round " + musicMem.currentRound + " / " + musicMem.maxRounds, WIDTH / 10, 70);
+  
+  // Phase indicator
+  let phaseText = "";
+  if (musicMem.phase === "memory") phaseText = "MEMORY PHASE";
+  else if (musicMem.phase === "deception") phaseText = "DECEPTION PHASE";
+  else if (musicMem.phase === "guessing") phaseText = "GUESSING PHASE";
+  
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#ffb6c1";
+  ctx.fillText(phaseText, WIDTH - 150, 70);
+  
+  // Timer for guessing phase
+  if (musicMem.phase === "guessing" && musicMem.allowInput) {
+    let elapsed = performance.now() / 1000 - musicMem.phaseStartTime;
+    let remaining = Math.max(0, musicMem.timeLimit - elapsed);
+    ctx.font = "28px Arial";
+    ctx.fillStyle = remaining < 3 ? "#ff0000" : "#ffb6c1";
+    ctx.fillText("Time: " + Math.ceil(remaining), WIDTH / 2, 120);
+    
+    // End round if time runs out
+    if (remaining <= 0 && musicMem.allowInput) {
+      musicMem.allowInput = false;
+      musicMem.feedback = "Time's up!";
+      setTimeout(() => nextMusicMemRound(), 1500);
+    }
+  }
+  
+  // Draw grid
   musicMem.grid.forEach(tile => {
     ctx.save();
-    let img = assets.images["img" + tile.idx];
-    if (img) ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
-    else { ctx.fillStyle = "#333"; ctx.fillRect(tile.x, tile.y, tile.size, tile.size); }
-    if (tile.highlight) { ctx.strokeStyle = "#ff69b4"; ctx.lineWidth = 6; }
-    else if (tile.selected) { ctx.strokeStyle = "#00f2ff"; ctx.lineWidth = 4; }
-    else { ctx.strokeStyle = "#262626"; ctx.lineWidth = 2; }
+    
+    // Only show images when revealed
+    if (tile.revealed && tile.imageIdx) {
+      let img = assets.images["img" + tile.imageIdx];
+      if (img) ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
+      else { 
+        ctx.fillStyle = "#333"; 
+        ctx.fillRect(tile.x, tile.y, tile.size, tile.size); 
+      }
+    } else {
+      ctx.fillStyle = "#333";
+      ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
+    }
+    
+    // Border styling
+    if (tile.highlight) { 
+      ctx.strokeStyle = "#ff69b4"; 
+      ctx.lineWidth = 6; 
+    }
+    else if (tile.selected) { 
+      ctx.strokeStyle = "#00f2ff"; 
+      ctx.lineWidth = 4; 
+    }
+    else { 
+      ctx.strokeStyle = "#262626"; 
+      ctx.lineWidth = 2; 
+    }
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
-  musicMemButtons.forEach(b => b.draw());
+  
+  // Draw buttons based on game state
+  if (!musicMem.gameStarted && !musicMem.showRoundSplash) {
+    musicMemButtons.forEach(b => b.draw());
+  } else if (musicMem.gameStarted && musicMem.phase === "guessing") {
+    // Only show QUIT button during gameplay
+    musicMemButtons[1].draw();
+  }
+  
+  // Feedback text
   ctx.font = "28px Arial";
   ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
   ctx.fillText(musicMem.feedback, WIDTH / 2, HEIGHT - 120);
+  
+  // Score
   ctx.font = "21px Arial";
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText("Score: " + musicMem.score, WIDTH / 11, HEIGHT - 600);
+  
+  // Phase message overlay
+  if (musicMem.showPhaseMessage) {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "#222";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.globalAlpha = 1;
+    ctx.font = "36px Arial";
+    ctx.fillStyle = "#ff69b4";
+    ctx.textAlign = "center";
+    ctx.fillText(musicMem.phaseMessage, WIDTH / 2, HEIGHT / 2);
+    ctx.restore();
+  }
+  
+  // Round splash
   if (musicMem.showRoundSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -590,6 +1048,8 @@ function drawMusicMemory() {
     ctx.fillText(musicMem.splashMsg, WIDTH / 2, HEIGHT / 2);
     ctx.restore();
   }
+  
+  // Copyright
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
@@ -933,7 +1393,7 @@ canvas.addEventListener("click", function (e) {
         music.pause();
         music.currentTime = 0;
       }
-      gameState = "musicmem"; startMusicMemoryGame();
+      gameState = "musicmem_rules";
     }
     else if (modeButtons[1].isInside(mx, my)) {
       let music = assets.sounds["music"];
@@ -967,13 +1427,24 @@ canvas.addEventListener("click", function (e) {
       else if (music) music.pause();
     }
     else if (modeButtons[5].isInside(mx, my)) { gameState = "menu"; }
-  } else if (gameState === "musicmem") {
-    if (musicMemButtons[0].isInside(mx, my)) { gameState = "mode"; }
-    else if (musicMemButtons[1].isInside(mx, my)) {
-      if (!musicMem.playingMelody && !musicMem.showRoundSplash) playMelody();
+  } else if (gameState === "musicmem_rules") {
+    if (musicMemRulesButtons[0].isInside(mx, my)) {
+      gameState = "musicmem"; 
+      startMusicMemoryGame();
     }
-    else if (musicMemButtons[2].isInside(mx, my)) { gameState = "menu"; }
-    if (musicMem.allowInput && !musicMem.playingMelody && !musicMem.showRoundSplash) {
+    else if (musicMemRulesButtons[1].isInside(mx, my)) { 
+      gameState = "mode"; 
+    }
+  } else if (gameState === "musicmem") {
+    if (musicMemButtons[0].isInside(mx, my)) {
+      if (!musicMem.gameStarted && !musicMem.showRoundSplash) {
+        startMemoryPhase();
+      }
+    }
+    else if (musicMemButtons[1].isInside(mx, my)) { gameState = "mode"; }
+    
+    // Handle tile clicks during guessing phase
+    if (musicMem.phase === "guessing" && musicMem.allowInput && !musicMem.showRoundSplash) {
       for (let tile of musicMem.grid) {
         if (
           mx >= tile.x &&
@@ -981,18 +1452,8 @@ canvas.addEventListener("click", function (e) {
           my >= tile.y &&
           my <= tile.y + tile.size
         ) {
-          if (!tile.selected && musicMem.userSequence.length < musicMem.sequence.length) {
-            tile.selected = true;
-            musicMem.userSequence.push(tile.idx);
-            let sfx = assets.sounds["kuku"];
-            if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
-            if (musicMem.userSequence.length === musicMem.sequence.length) {
-              musicMem.allowInput = false;
-              checkMusicMemResult();
-            }
-            drawMusicMemory();
-            break;
-          }
+          handleMusicMemTileClick(tile.idx);
+          break;
         }
       }
     }
@@ -1288,41 +1749,20 @@ function handleBattleGridClick(mx, my) {
   }
 }
 
-// --- MUSIC MEMORY RESULT CHECK ---
-function checkMusicMemResult() {
-  let correct = true;
-  for (let i = 0; i < musicMem.sequence.length; i++) {
-    if (musicMem.userSequence[i] !== musicMem.sequence[i]) {
-      correct = false;
-      break;
-    }
-  }
-  if (correct) {
-    musicMem.feedback = "Correct!";
-    musicMem.score += 1;
-    let sfx = assets.sounds["yupi"];
-    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
-    setTimeout(() => nextMusicMemRound(), 1100);
-  } else {
-    musicMem.feedback = "Wrong!";
-    let sfx = assets.sounds["buuuu"];
-    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
-    setTimeout(() => nextMusicMemRound(), 1600);
-  }
-  drawMusicMemory();
-}
 function nextMusicMemRound() {
   if (musicMem.currentRound < musicMem.maxRounds) {
     musicMem.currentRound++;
     musicMem.showRoundSplash = true;
-    musicMem.splashTimer = 45;
+    musicMem.splashTimer = 60;
     musicMem.splashMsg = "Round " + musicMem.currentRound;
+    musicMem.gameStarted = false;
+    musicMem.phase = "memory";
     setupMusicMemRound();
   } else {
     musicMem.showRoundSplash = true;
-    musicMem.splashTimer = 80;
-    musicMem.splashMsg = "Game Over!\nScore: " + musicMem.score;
-    setTimeout(() => { gameState = "mode"; }, 2200);
+    musicMem.splashTimer = 120;
+    musicMem.splashMsg = "Game Over!\nFinal Score: " + musicMem.score;
+    setTimeout(() => { gameState = "mode"; }, 4000);
   }
   drawMusicMemory();
 }
@@ -1331,7 +1771,19 @@ function nextMusicMemRound() {
 function tickSplash() {
   if (gameState === "musicmem" && musicMem.showRoundSplash) {
     if (musicMem.splashTimer > 0) musicMem.splashTimer--;
-    else { musicMem.showRoundSplash = false; musicMem.feedback = ""; playMelody(); }
+    else { 
+      musicMem.showRoundSplash = false; 
+      musicMem.feedback = ""; 
+      drawMusicMemory(); 
+    }
+  }
+  
+  if (gameState === "musicmem" && musicMem.showPhaseMessage) {
+    if (musicMem.phaseMessageTimer > 0) musicMem.phaseMessageTimer--;
+    else { 
+      musicMem.showPhaseMessage = false; 
+      drawMusicMemory(); 
+    }
   }
   if (gameState === "memory_classic" && memoryGame.showSplash) {
     if (memoryGame.splashTimer > 0) memoryGame.splashTimer--;
@@ -1387,6 +1839,7 @@ function draw() {
     ctx.fillText("Loading MEMOMU...", WIDTH / 2, HEIGHT / 2);
   } else if (gameState === "menu") drawMenu();
   else if (gameState === "mode") drawModeMenu();
+  else if (gameState === "musicmem_rules") drawMusicMemoryRules();
   else if (gameState === "musicmem") drawMusicMemory();
   else if (gameState === "memory_menu") drawMemoryMenu();
   else if (gameState === "memory_classic") drawMemoryGameClassic();
