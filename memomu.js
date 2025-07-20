@@ -103,6 +103,23 @@ let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, mem
 let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [];
 let soundOn = true;
 
+// --- GAME OVER OVERLAY ---
+let gameOverOverlay = {
+  active: false,
+  mode: "", // which game mode triggered the overlay
+  finalScore: 0,
+  buttons: []
+};
+
+// --- HIGH SCORE SYSTEM ---
+let highScores = {
+  musicMemory: [],
+  memoryClassic: [],
+  memoryMemomu: [],
+  monluck: [],
+  battle: []
+};
+
 // --- MUSIC MEMORY MODE DATA ---
 let musicMem = {
   grid: [],
@@ -239,6 +256,188 @@ function createGrid(rows, cols, tileSize = 105, gap = 12, startY = 180) {
     }
   }
   return tiles;
+}
+
+// --- HIGH SCORE MANAGEMENT ---
+function loadHighScores() {
+  try {
+    const saved = localStorage.getItem('memomu_highscores');
+    if (saved) {
+      highScores = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.log('Could not load high scores:', e);
+  }
+  // Ensure all categories exist
+  if (!highScores.musicMemory) highScores.musicMemory = [];
+  if (!highScores.memoryClassic) highScores.memoryClassic = [];
+  if (!highScores.memoryMemomu) highScores.memoryMemomu = [];
+  if (!highScores.monluck) highScores.monluck = [];
+  if (!highScores.battle) highScores.battle = [];
+}
+
+function saveHighScores() {
+  try {
+    localStorage.setItem('memomu_highscores', JSON.stringify(highScores));
+  } catch (e) {
+    console.log('Could not save high scores:', e);
+  }
+}
+
+function addHighScore(mode, score) {
+  const timestamp = new Date().toISOString();
+  const entry = { score, timestamp };
+  
+  if (!highScores[mode]) highScores[mode] = [];
+  highScores[mode].push(entry);
+  
+  // Sort by score (descending) and keep top 10
+  highScores[mode].sort((a, b) => b.score - a.score);
+  highScores[mode] = highScores[mode].slice(0, 10);
+  
+  saveHighScores();
+}
+
+function getTopScore(mode) {
+  if (!highScores[mode] || highScores[mode].length === 0) return 0;
+  return highScores[mode][0].score;
+}
+
+// --- GAME OVER OVERLAY FUNCTIONS ---
+function showGameOverOverlay(mode, finalScore) {
+  gameOverOverlay.active = true;
+  gameOverOverlay.mode = mode;
+  gameOverOverlay.finalScore = finalScore;
+  
+  // Add to high scores
+  addHighScore(mode, finalScore);
+  
+  // Setup overlay buttons
+  gameOverOverlay.buttons = [
+    new Button("PLAY AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50),
+    new Button("QUIT", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
+  ];
+}
+
+function hideGameOverOverlay() {
+  gameOverOverlay.active = false;
+  gameOverOverlay.mode = "";
+  gameOverOverlay.finalScore = 0;
+  gameOverOverlay.buttons = [];
+}
+
+function drawGameOverOverlay() {
+  if (!gameOverOverlay.active) return;
+  
+  // Pink overlay background
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = "#ff69b4";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.globalAlpha = 1;
+  
+  // Main container
+  ctx.fillStyle = "#ffb6c1";
+  ctx.strokeStyle = "#ff1493";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300, 20);
+  ctx.fill();
+  ctx.stroke();
+  
+  // Game Over text
+  ctx.font = "48px Arial";
+  ctx.fillStyle = "#8b0000";
+  ctx.textAlign = "center";
+  ctx.fillText("GAME OVER!", WIDTH / 2, HEIGHT / 2 - 80);
+  
+  // Final score
+  ctx.font = "32px Arial";
+  ctx.fillStyle = "#000";
+  ctx.fillText("Final Score: " + gameOverOverlay.finalScore, WIDTH / 2, HEIGHT / 2 - 30);
+  
+  // High score info
+  const topScore = getTopScore(gameOverOverlay.mode);
+  if (gameOverOverlay.finalScore === topScore && topScore > 0) {
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#ffd700";
+    ctx.fillText("🏆 NEW HIGH SCORE! 🏆", WIDTH / 2, HEIGHT / 2 + 10);
+  } else if (topScore > 0) {
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#4b0082";
+    ctx.fillText("Best: " + topScore, WIDTH / 2, HEIGHT / 2 + 10);
+  }
+  
+  // Draw buttons
+  gameOverOverlay.buttons.forEach(b => b.draw());
+  
+  ctx.restore();
+}
+
+function handleGameOverOverlayClick(mx, my) {
+  if (!gameOverOverlay.active) return false;
+  
+  for (let button of gameOverOverlay.buttons) {
+    if (button.isInside(mx, my)) {
+      if (button.label === "PLAY AGAIN") {
+        hideGameOverOverlay();
+        restartCurrentGame();
+      } else if (button.label === "QUIT") {
+        hideGameOverOverlay();
+        gameState = "menu";
+      }
+      return true;
+    }
+  }
+  return true; // Block all other clicks when overlay is active
+}
+
+function restartCurrentGame() {
+  switch (gameOverOverlay.mode) {
+    case "musicMemory":
+      startMusicMemoryGame();
+      break;
+    case "memoryClassic":
+      startMemoryGameClassic();
+      break;
+    case "memoryMemomu":
+      startMemoryGameMemomu();
+      break;
+    case "monluck":
+      startMonluckGame();
+      break;
+    case "battle":
+      resetBattleGame();
+      break;
+  }
+}
+
+// --- GAME OVER FUNCTIONS FOR EACH MODE ---
+function endMusicMemRound() {
+  musicMem.allowInput = false;
+  musicMem.feedback = "Game Over!";
+  showGameOverOverlay("musicMemory", musicMem.score);
+}
+
+function endMusicMemoryGame() {
+  musicMem.gameOver = true;
+  showGameOverOverlay("musicMemory", musicMem.score);
+}
+
+function endMemoryClassicGame() {
+  showGameOverOverlay("memoryClassic", memoryGame.score);
+}
+
+function endMemoryMemomuGame() {
+  showGameOverOverlay("memoryMemomu", memomuGame.score);
+}
+
+function endMonluckGame() {
+  showGameOverOverlay("monluck", monluckGame.score);
+}
+
+function endBattleGame() {
+  showGameOverOverlay("battle", battleGame.pscore);
 }
 
 // --- BUTTONS SETUP ---
@@ -539,10 +738,7 @@ function playDeceptionSequence() {
   }
   playStep();
 }
-function endMusicMemoryGame() {
-  musicMem.gameOver = true;
-  drawMusicMemory();
-}
+
 function startGuessingPhase() {
   musicMem.phase = "guessing";
   musicMem.showPhaseMessage = true;
@@ -610,7 +806,7 @@ function handleMusicMemTileClick(tileIdx) {
     musicMem.feedback = "Wrong order! Round ended.";
     musicMem.allowInput = false;
 
-    setTimeout(() => endtMusicMemRound(), 1500);
+    setTimeout(() => endMusicMemRound(), 1500);
     drawMusicMemory();
     return;
   }
@@ -1068,6 +1264,9 @@ function drawMusicMemory() {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+
+  // Draw game over overlay if active
+  drawGameOverOverlay();
 }
 function drawMemoryGameClassic() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -1119,6 +1318,9 @@ function drawMemoryGameClassic() {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+
+  // Draw game over overlay if active
+  drawGameOverOverlay();
 }
 function drawMemoryGameMemomu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -1168,6 +1370,9 @@ function drawMemoryGameMemomu() {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+
+  // Draw game over overlay if active
+  drawGameOverOverlay();
 }
 function drawMonluckGame() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -1219,6 +1424,9 @@ function drawMonluckGame() {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+
+  // Draw game over overlay if active
+  drawGameOverOverlay();
 }
 function drawBattleGame() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -1304,6 +1512,9 @@ function drawBattleGame() {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+
+  // Draw game over overlay if active
+  drawGameOverOverlay();
 }
 function drawBattleGrids() {
   ctx.fillStyle = "#222";
@@ -1389,6 +1600,11 @@ canvas.addEventListener("click", function (e) {
   let rect = canvas.getBoundingClientRect();
   let mx = e.clientX - rect.left;
   let my = e.clientY - rect.top;
+
+  // Check game over overlay first - blocks all other interactions
+  if (handleGameOverOverlayClick(mx, my)) {
+    return;
+  }
 
   if (gameState === "menu") {
     if (menuButtons[0].isInside(mx, my)) { gameState = "mode"; }
@@ -1874,6 +2090,7 @@ loadAssets().then(() => {
   gameState = "menu";
   setupButtons();
   resetBattleGame();
+  loadHighScores(); // Load high scores from localStorage
   let music = assets.sounds["music"];
   if (music) { music.loop = true; music.volume = 0.55; if (soundOn) music.play(); }
 });
