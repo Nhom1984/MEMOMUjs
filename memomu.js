@@ -37,6 +37,9 @@ const imageFiles = [
 
 for (let i = 1; i <= 18; i++) imageFiles.push({ name: `img${i}`, src: `assets/image${i}.png` });
 for (let i = 1; i <= 6; i++) imageFiles.push({ name: `memimg${i}`, src: `assets/image${i}.png` });
+// Add all images for upgraded Classic Memory (image1-33 + monad)
+for (let i = 1; i <= 33; i++) imageFiles.push({ name: `classicimg${i}`, src: `assets/image${i}.png` });
+imageFiles.push({ name: `classicmonad`, src: `assets/monad.png` });
 for (let i = 1; i <= 30; i++) imageFiles.push({ name: `mmimg${i}`, src: `assets/image${(i % 12) + 1}.png` });
 for (let i = 1; i <= 13; i++) imageFiles.push({ name: `avatar${i}`, src: `assets/image${i}.png` }); // battle avatars
 for (let i = 14; i <= 33; i++) imageFiles.push({ name: `battle${i}`, src: `assets/image${i}.png` }); // battle grid images
@@ -99,8 +102,8 @@ class Button {
 }
 
 // --- GAME STATE ---
-let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic, memory_memomu, monluck, battle
-let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [];
+let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu, monluck, battle
+let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [];
 let soundOn = true;
 
 // --- GAME OVER OVERLAY ---
@@ -166,7 +169,19 @@ let memoryGame = {
   showSplash: true,
   splashTimer: 40,
   splashMsg: "Classic Memory",
-  score: 0
+  score: 0,
+  
+  // New upgraded Classic Memory features
+  currentRound: 1,
+  maxRounds: 5,
+  roundScores: [], // Store score for each round
+  timer: 0,
+  roundStartTime: 0,
+  timeRemaining: 30,
+  showRules: true,
+  gameCompleted: false,
+  allImages: [], // All available images for pairs
+  roundPairCount: 0
 };
 
 // --- MEMOMU MEMORY MODE DATA ---
@@ -465,10 +480,11 @@ function setupButtons() {
     new Button("MEMOMU", WIDTH / 2, memY + 80, 320, 56),
     new Button("BACK", WIDTH / 2, memY + 160, 320, 56)
   ];
+  memoryClassicRulesButtons = [
+    new Button("GOT IT", WIDTH / 2, HEIGHT - 100, 200, 60)
+  ];
   memoryClassicButtons = [
-    new Button("BACK", WIDTH / 2 - 150, HEIGHT - 60, 150, 48),
-    new Button("RESTART", WIDTH / 2, HEIGHT - 60, 170, 48),
-    new Button("QUIT", WIDTH / 2 + 150, HEIGHT - 60, 150, 48)
+    new Button("QUIT", WIDTH / 2, HEIGHT - 60, 150, 48)
   ];
   memoryMemomuButtons = [
     new Button("BACK", WIDTH / 2 - 170, HEIGHT - 60, 130, 48),
@@ -835,14 +851,64 @@ function handleMusicMemTileClick(tileIdx) {
 }
 
 // --- CLASSIC MEMORY MODE LOGIC ---
-function startMemoryGameClassic() {
-  let images = [];
-  for (let i = 1; i <= 6; i++) { images.push(i); images.push(i); }
-  images = images.sort(() => Math.random() - 0.5);
-  memoryGame.grid = createGrid(3, 4);
-  memoryGame.revealed = Array(12).fill(false);
-  memoryGame.matched = Array(12).fill(false);
-  memoryGame.pairIds = images.slice();
+// Helper functions for upgraded Classic Memory
+function getClassicRoundGrid(round) {
+  switch(round) {
+    case 1: return { rows: 3, cols: 4, pairs: 6 };
+    case 2: return { rows: 4, cols: 4, pairs: 8 };
+    case 3: return { rows: 4, cols: 5, pairs: 10 };
+    case 4: return { rows: 5, cols: 5, pairs: 12 }; // 25 tiles, 12 pairs + 1 extra
+    case 5: return { rows: 5, cols: 6, pairs: 15 };
+    default: return { rows: 3, cols: 4, pairs: 6 };
+  }
+}
+
+function initializeClassicMemoryUpgraded() {
+  memoryGame.currentRound = 1;
+  memoryGame.maxRounds = 5;
+  memoryGame.roundScores = [];
+  memoryGame.score = 0;
+  memoryGame.showRules = true;
+  memoryGame.gameCompleted = false;
+  
+  // Prepare all available images (1-33 + monad = 34 total)
+  memoryGame.allImages = [];
+  for (let i = 1; i <= 33; i++) {
+    memoryGame.allImages.push(i);
+  }
+  memoryGame.allImages.push('monad');
+}
+
+function setupClassicRound(round) {
+  let gridConfig = getClassicRoundGrid(round);
+  memoryGame.grid = createGrid(gridConfig.rows, gridConfig.cols, 80, 8, 160);
+  
+  let totalTiles = gridConfig.rows * gridConfig.cols;
+  memoryGame.roundPairCount = gridConfig.pairs;
+  
+  // Select random images for pairs
+  let shuffledImages = [...memoryGame.allImages].sort(() => Math.random() - 0.5);
+  let selectedImages = shuffledImages.slice(0, gridConfig.pairs);
+  
+  // Create pairs array
+  let pairIds = [];
+  selectedImages.forEach(img => {
+    pairIds.push(img);
+    pairIds.push(img);
+  });
+  
+  // For odd number of tiles (round 4), add one extra image
+  if (totalTiles % 2 === 1) {
+    let extraImage = shuffledImages[gridConfig.pairs];
+    pairIds.push(extraImage);
+  }
+  
+  // Shuffle the pairs
+  pairIds = pairIds.sort(() => Math.random() - 0.5);
+  
+  memoryGame.pairIds = pairIds;
+  memoryGame.revealed = Array(totalTiles).fill(false);
+  memoryGame.matched = Array(totalTiles).fill(false);
   memoryGame.firstIdx = null;
   memoryGame.secondIdx = null;
   memoryGame.lock = false;
@@ -851,8 +917,56 @@ function startMemoryGameClassic() {
   memoryGame.feedback = "";
   memoryGame.showSplash = true;
   memoryGame.splashTimer = 40;
-  memoryGame.splashMsg = "Classic Memory";
-  memoryGame.score = 0;
+  memoryGame.splashMsg = `Round ${round}`;
+  memoryGame.roundStartTime = performance.now();
+  memoryGame.timeRemaining = 30;
+}
+
+function startMemoryGameClassic() {
+  initializeClassicMemoryUpgraded();
+  gameState = "memory_classic_rules";
+}
+
+function startClassicRound() {
+  setupClassicRound(memoryGame.currentRound);
+  gameState = "memory_classic";
+}
+
+function nextClassicRound() {
+  memoryGame.currentRound++;
+  if (memoryGame.currentRound <= memoryGame.maxRounds) {
+    startClassicRound();
+  } else {
+    memoryGame.gameCompleted = true;
+    gameState = "memory_classic_complete";
+  }
+}
+
+function calculateRoundScore(timeUsed) {
+  let baseScore = memoryGame.pairsFound; // 1 point per pair
+  let timeBonus = Math.max(0, 30 - timeUsed); // seconds under 30
+  let multiplier = memoryGame.currentRound; // round number as multiplier
+  return baseScore + (timeBonus * multiplier);
+}
+
+function endClassicRound() {
+  let timeUsed = (performance.now() - memoryGame.roundStartTime) / 1000;
+  let roundScore = calculateRoundScore(timeUsed);
+  memoryGame.roundScores.push(roundScore);
+  memoryGame.score += roundScore;
+  
+  if (memoryGame.currentRound < memoryGame.maxRounds) {
+    memoryGame.feedback = `Round ${memoryGame.currentRound} Complete! +${roundScore} points`;
+    setTimeout(() => {
+      nextClassicRound();
+    }, 2000);
+  } else {
+    memoryGame.feedback = `Game Complete! Final Score: ${memoryGame.score}`;
+    setTimeout(() => {
+      memoryGame.gameCompleted = true;
+      gameState = "memory_classic_complete";
+    }, 2000);
+  }
 }
 
 // --- MEMOMU MEMORY MODE LOGIC ---
@@ -1261,41 +1375,161 @@ function drawMusicMemory() {
   // Draw game over overlay if active
   drawGameOverOverlay();
 }
-function drawMemoryGameClassic() {
+
+// --- UPGRADED CLASSIC MEMORY DRAWING FUNCTIONS ---
+function drawMemoryClassicRules() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  
+  // Light pink background
+  ctx.fillStyle = "#ffb6c1";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  
+  // Rules table
+  ctx.fillStyle = "#ff69b4";
+  ctx.font = "36px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Classic Memory Rules", WIDTH / 2, 100);
+  
+  ctx.fillStyle = "#333";
+  ctx.font = "24px Arial";
+  ctx.fillText("5 Rounds with Progressive Grids:", WIDTH / 2, 180);
+  
+  ctx.font = "20px Arial";
+  ctx.fillText("Round 1: 3×4 grid (6 pairs)", WIDTH / 2, 220);
+  ctx.fillText("Round 2: 4×4 grid (8 pairs)", WIDTH / 2, 250);
+  ctx.fillText("Round 3: 4×5 grid (10 pairs)", WIDTH / 2, 280);
+  ctx.fillText("Round 4: 5×5 grid (12 pairs)", WIDTH / 2, 310);
+  ctx.fillText("Round 5: 5×6 grid (15 pairs)", WIDTH / 2, 340);
+  
+  ctx.font = "24px Arial";
+  ctx.fillText("Scoring:", WIDTH / 2, 400);
+  ctx.font = "20px Arial";
+  ctx.fillText("1 point per pair + (seconds under 30) × round number", WIDTH / 2, 430);
+  ctx.fillText("Each round: 30 seconds maximum", WIDTH / 2, 460);
+  
+  memoryClassicRulesButtons.forEach(b => b.draw());
+  
+  // Copyright
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#666";
+  ctx.textAlign = "right";
+  ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
+}
+
+function drawMemoryClassicComplete() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  
   ctx.fillStyle = "#ff69b4";
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("Classic Memory", WIDTH / 2, 90);
-  ctx.font = "22px Arial";
+  ctx.fillText("Game Complete!", WIDTH / 2, 100);
+  
   ctx.fillStyle = "#fff";
-  ctx.fillText("Pairs: " + memoryGame.pairsFound + " / 6", WIDTH / 2, 135);
+  ctx.font = "28px Arial";
+  ctx.fillText("Final Score: " + memoryGame.score, WIDTH / 2, 150);
+  
+  // Score table
+  ctx.font = "24px Arial";
+  ctx.fillText("Round Summary:", WIDTH / 2, 200);
+  
+  ctx.font = "20px Arial";
+  for (let i = 0; i < memoryGame.roundScores.length; i++) {
+    ctx.fillText(`Round ${i + 1}: ${memoryGame.roundScores[i]} points`, WIDTH / 2, 230 + i * 30);
+  }
+  
+  // Buttons: Again and Quit
+  let againBtn = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 100, 150, 60);
+  let quitBtn = new Button("QUIT", WIDTH / 2 + 100, HEIGHT - 100, 150, 60);
+  againBtn.draw();
+  quitBtn.draw();
+  
+  // Store buttons for click handling
+  memoryGame.completeButtons = [againBtn, quitBtn];
+  
+  // Copyright
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#666";
+  ctx.textAlign = "right";
+  ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
+}
+
+function drawMemoryGameClassic() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  
+  // Update timer
+  if (!memoryGame.showSplash && !memoryGame.lock) {
+    let elapsed = (performance.now() - memoryGame.roundStartTime) / 1000;
+    memoryGame.timeRemaining = Math.max(0, 30 - elapsed);
+    
+    // Check if time's up
+    if (memoryGame.timeRemaining <= 0 && memoryGame.pairsFound < memoryGame.roundPairCount) {
+      endClassicRound();
+    }
+  }
+  
+  // Round and score display at top left (like Music Memory)
+  ctx.fillStyle = "#ff69b4";
+  ctx.font = "24px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText(`Round: ${memoryGame.currentRound}/${memoryGame.maxRounds}`, 20, 40);
+  ctx.fillText(`Score: ${memoryGame.score}`, 20, 70);
+  ctx.fillText(`Time: ${Math.ceil(memoryGame.timeRemaining)}s`, 20, 100);
+  
+  // Title
+  ctx.fillStyle = "#ff69b4";
+  ctx.font = "36px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Classic Memory", WIDTH / 2, 50);
+  
+  // Pairs progress
+  ctx.font = "20px Arial";
+  ctx.fillStyle = "#fff";
+  ctx.fillText(`Pairs: ${memoryGame.pairsFound} / ${memoryGame.roundPairCount}`, WIDTH / 2, 120);
+  
+  // Draw tiles
   memoryGame.grid.forEach((tile, i) => {
     ctx.save();
     let isRevealed = memoryGame.revealed[i] || memoryGame.matched[i];
-    let img = assets.images["memimg" + memoryGame.pairIds[i]];
-    if (isRevealed && img) ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
-    else {
+    
+    // Get the correct image
+    let pairId = memoryGame.pairIds[i];
+    let imgName = pairId === 'monad' ? 'classicmonad' : `classicimg${pairId}`;
+    let img = assets.images[imgName];
+    
+    if (isRevealed && img) {
+      // Show the image directly (no question marks in upgraded mode)
+      ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
+    } else {
+      // Show blank tile (no question marks)
       ctx.fillStyle = "#333";
       ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
-      ctx.font = "46px Arial";
-      ctx.fillStyle = "#ffb6c1";
-      ctx.textAlign = "center";
-      ctx.fillText("?", tile.x + tile.size / 2, tile.y + tile.size / 2 + 14);
     }
-    if (memoryGame.matched[i]) { ctx.strokeStyle = "#00f2ff"; ctx.lineWidth = 4; }
-    else if (isRevealed) { ctx.strokeStyle = "#ff69b4"; ctx.lineWidth = 3; }
-    else { ctx.strokeStyle = "#262626"; ctx.lineWidth = 2; }
+    
+    // Tile borders
+    if (memoryGame.matched[i]) { 
+      ctx.strokeStyle = "#00f2ff"; 
+      ctx.lineWidth = 4; 
+    } else if (isRevealed) { 
+      ctx.strokeStyle = "#ff69b4"; 
+      ctx.lineWidth = 3; 
+    } else { 
+      ctx.strokeStyle = "#262626"; 
+      ctx.lineWidth = 2; 
+    }
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
+  
+  // Buttons (only QUIT)
   memoryClassicButtons.forEach(b => b.draw());
-  ctx.font = "28px Arial";
+  
+  // Feedback
+  ctx.font = "24px Arial";
   ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
   ctx.fillText(memoryGame.feedback, WIDTH / 2, HEIGHT - 120);
-  ctx.font = "21px Arial";
-  ctx.fillStyle = "#ffb6c1";
-  ctx.fillText("Score: " + memoryGame.score, WIDTH / 2, HEIGHT - 80);
+  
+  // Round splash
   if (memoryGame.showSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1307,10 +1541,12 @@ function drawMemoryGameClassic() {
     ctx.fillText(memoryGame.splashMsg, WIDTH / 2, HEIGHT / 2);
     ctx.restore();
   }
-  ctx.font = "20px Arial";
-  ctx.fillStyle = "#fff";
+  
+  // Copyright
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#666";
   ctx.textAlign = "right";
-  ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+  ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
 
   // Draw game over overlay if active
   drawGameOverOverlay();
@@ -1681,14 +1917,16 @@ canvas.addEventListener("click", function (e) {
       }
     }
   } else if (gameState === "memory_menu") {
-    if (memoryMenuButtons[0].isInside(mx, my)) { gameState = "memory_classic"; startMemoryGameClassic(); }
+    if (memoryMenuButtons[0].isInside(mx, my)) { gameState = "memory_classic_rules"; startMemoryGameClassic(); }
     else if (memoryMenuButtons[1].isInside(mx, my)) { gameState = "memory_memomu"; startMemoryGameMemomu(); }
     else if (memoryMenuButtons[2].isInside(mx, my)) { gameState = "mode"; }
+  } else if (gameState === "memory_classic_rules") {
+    if (memoryClassicRulesButtons[0].isInside(mx, my)) { 
+      startClassicRound(); 
+    }
   } else if (gameState === "memory_classic") {
-    if (memoryClassicButtons[0].isInside(mx, my)) { gameState = "memory_menu"; }
-    else if (memoryClassicButtons[1].isInside(mx, my)) { startMemoryGameClassic(); drawMemoryGameClassic(); }
-    else if (memoryClassicButtons[2].isInside(mx, my)) { gameState = "menu"; }
-    if (!memoryGame.showSplash && !memoryGame.lock) {
+    if (memoryClassicButtons[0].isInside(mx, my)) { gameState = "menu"; }
+    if (!memoryGame.showSplash && !memoryGame.lock && memoryGame.timeRemaining > 0) {
       for (let i = 0; i < memoryGame.grid.length; i++) {
         let tile = memoryGame.grid[i];
         if (
@@ -1701,6 +1939,16 @@ canvas.addEventListener("click", function (e) {
           drawMemoryGameClassic();
           break;
         }
+      }
+    }
+  } else if (gameState === "memory_classic_complete") {
+    if (memoryGame.completeButtons && memoryGame.completeButtons.length >= 2) {
+      if (memoryGame.completeButtons[0].isInside(mx, my)) { 
+        // AGAIN button
+        startMemoryGameClassic();
+      } else if (memoryGame.completeButtons[1].isInside(mx, my)) { 
+        // QUIT button
+        gameState = "menu"; 
       }
     }
   } else if (gameState === "memory_memomu") {
@@ -1749,6 +1997,8 @@ canvas.addEventListener("click", function (e) {
 // --- MEMORY CLASSIC CLICK LOGIC ---
 function handleMemoryTileClickClassic(idx) {
   if (memoryGame.lock || memoryGame.revealed[idx] || memoryGame.matched[idx]) return;
+  if (memoryGame.timeRemaining <= 0) return; // Time's up
+  
   memoryGame.revealed[idx] = true;
   if (memoryGame.firstIdx === null) {
     memoryGame.firstIdx = idx;
@@ -1759,34 +2009,36 @@ function handleMemoryTileClickClassic(idx) {
     memoryGame.lock = true;
     memoryGame.attempts++;
     drawMemoryGameClassic();
+    
     setTimeout(() => {
       let a = memoryGame.pairIds[memoryGame.firstIdx];
       let b = memoryGame.pairIds[memoryGame.secondIdx];
+      
       if (a === b) {
+        // Match found!
         memoryGame.matched[memoryGame.firstIdx] = true;
         memoryGame.matched[memoryGame.secondIdx] = true;
         memoryGame.pairsFound++;
-        memoryGame.score += 2;
         memoryGame.feedback = "Match!";
         let sfx = assets.sounds["yupi"];
         if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+        
+        // Check if round is complete
+        if (memoryGame.pairsFound >= memoryGame.roundPairCount) {
+          endClassicRound();
+        }
       } else {
+        // No match
         memoryGame.revealed[memoryGame.firstIdx] = false;
         memoryGame.revealed[memoryGame.secondIdx] = false;
         memoryGame.feedback = "Miss!";
         let sfx = assets.sounds["buuuu"];
         if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
       }
+      
       memoryGame.firstIdx = null;
       memoryGame.secondIdx = null;
       memoryGame.lock = false;
-      if (memoryGame.pairsFound === 6) {
-        memoryGame.feedback = "You win!";
-        memoryGame.showSplash = true;
-        memoryGame.splashTimer = 55;
-        memoryGame.splashMsg = "Victory!\nScore: " + memoryGame.score + "\nAttempts: " + memoryGame.attempts;
-        setTimeout(() => { gameState = "memory_menu"; }, 2200);
-      }
       drawMemoryGameClassic();
     }, 900);
   }
@@ -2065,7 +2317,9 @@ function draw() {
   else if (gameState === "musicmem_rules") drawMusicMemoryRules();
   else if (gameState === "musicmem") drawMusicMemory();
   else if (gameState === "memory_menu") drawMemoryMenu();
+  else if (gameState === "memory_classic_rules") drawMemoryClassicRules();
   else if (gameState === "memory_classic") drawMemoryGameClassic();
+  else if (gameState === "memory_classic_complete") drawMemoryClassicComplete();
   else if (gameState === "memory_memomu") drawMemoryGameMemomu();
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
