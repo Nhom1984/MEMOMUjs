@@ -947,8 +947,8 @@ function nextClassicRound() {
   if (memoryGame.currentRound <= memoryGame.maxRounds) {
     startClassicRound();
   } else {
-    memoryGame.gameCompleted = true;
-    gameState = "memory_classic_complete";
+    // Should not reach here as endClassicRound handles game completion
+    endMemoryClassicGame();
   }
 }
 
@@ -1418,43 +1418,6 @@ function drawMemoryClassicRules() {
   ctx.fillText("Each round: 30 seconds maximum", WIDTH / 2, 460);
   
   memoryClassicRulesButtons.forEach(b => b.draw());
-  
-  // Copyright
-  ctx.font = "16px Arial";
-  ctx.fillStyle = "#666";
-  ctx.textAlign = "right";
-  ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
-}
-
-function drawMemoryClassicComplete() {
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  
-  ctx.fillStyle = "#ff69b4";
-  ctx.font = "40px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText("Game Complete!", WIDTH / 2, 100);
-  
-  ctx.fillStyle = "#fff";
-  ctx.font = "28px Arial";
-  ctx.fillText("Final Score: " + memoryGame.score, WIDTH / 2, 150);
-  
-  // Score table
-  ctx.font = "24px Arial";
-  ctx.fillText("Round Summary:", WIDTH / 2, 200);
-  
-  ctx.font = "20px Arial";
-  for (let i = 0; i < memoryGame.roundScores.length; i++) {
-    ctx.fillText(`Round ${i + 1}: ${memoryGame.roundScores[i]} points`, WIDTH / 2, 230 + i * 30);
-  }
-  
-  // Buttons: Again and Quit
-  let againBtn = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 100, 150, 60);
-  let quitBtn = new Button("QUIT", WIDTH / 2 + 100, HEIGHT - 100, 150, 60);
-  againBtn.draw();
-  quitBtn.draw();
-  
-  // Store buttons for click handling
-  memoryGame.completeButtons = [againBtn, quitBtn];
   
   // Copyright
   ctx.font = "16px Arial";
@@ -1954,16 +1917,6 @@ canvas.addEventListener("click", function (e) {
         }
       }
     }
-  } else if (gameState === "memory_classic_complete") {
-    if (memoryGame.completeButtons && memoryGame.completeButtons.length >= 2) {
-      if (memoryGame.completeButtons[0].isInside(mx, my)) { 
-        // AGAIN button
-        startMemoryGameClassic();
-      } else if (memoryGame.completeButtons[1].isInside(mx, my)) { 
-        // QUIT button
-        gameState = "menu"; 
-      }
-    }
   } else if (gameState === "memory_memomu") {
     if (memoryMemomuButtons[0].isInside(mx, my)) { gameState = "memory_menu"; }
     else if (memoryMemomuButtons[1].isInside(mx, my)) { startMemoryGameMemomu(); drawMemoryGameMemomu(); }
@@ -2332,7 +2285,6 @@ function draw() {
   else if (gameState === "memory_menu") drawMemoryMenu();
   else if (gameState === "memory_classic_rules") drawMemoryClassicRules();
   else if (gameState === "memory_classic") drawMemoryGameClassic();
-  else if (gameState === "memory_classic_complete") drawMemoryClassicComplete();
   else if (gameState === "memory_memomu") drawMemoryGameMemomu();
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
