@@ -273,6 +273,16 @@ function createGrid(rows, cols, tileSize = 105, gap = 12, startY = 180) {
   return tiles;
 }
 
+// --- FISHER-YATES SHUFFLE FUNCTION ---
+function fisherYatesShuffle(array) {
+  const shuffled = [...array]; // Create a copy to avoid mutating original
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // --- HIGH SCORE MANAGEMENT ---
 function loadHighScores() {
   try {
@@ -527,8 +537,8 @@ function setupImageAssignments() {
     allImages.push(i);
   }
 
-  // Shuffle and pick 8
-  allImages = allImages.sort(() => Math.random() - 0.5);
+  // Shuffle and pick 8 using Fisher-Yates algorithm
+  allImages = fisherYatesShuffle(allImages);
   musicMem.assignedImages = allImages.slice(0, 8);
 
   // Create assignments mapping each selected image to a note (1-8)
@@ -555,8 +565,8 @@ function setupMusicMemRound() {
     musicMem.memorySequence.push(imgIdx);
   }
 
-  // Create deception sequence (different order of same images)
-  musicMem.deceptionSequence = [...musicMem.memorySequence].sort(() => Math.random() - 0.5);
+  // Create deception sequence (different order of same images) using Fisher-Yates
+  musicMem.deceptionSequence = fisherYatesShuffle([...musicMem.memorySequence]);
 
   // Fill grid: place assigned images + fill remaining with decoys
   fillGridForRound();
@@ -886,8 +896,8 @@ function setupClassicRound(round) {
   let totalTiles = gridConfig.rows * gridConfig.cols;
   memoryGame.roundPairCount = gridConfig.pairs;
   
-  // Select random images for pairs
-  let shuffledImages = [...memoryGame.allImages].sort(() => Math.random() - 0.5);
+  // Select random images for pairs using Fisher-Yates shuffle
+  let shuffledImages = fisherYatesShuffle(memoryGame.allImages);
   let selectedImages = shuffledImages.slice(0, gridConfig.pairs);
   
   // Create pairs array
@@ -903,8 +913,8 @@ function setupClassicRound(round) {
     pairIds.push(extraImage);
   }
   
-  // Shuffle the pairs
-  pairIds = pairIds.sort(() => Math.random() - 0.5);
+  // Shuffle the pairs using Fisher-Yates algorithm
+  pairIds = fisherYatesShuffle(pairIds);
   
   memoryGame.pairIds = pairIds;
   memoryGame.revealed = Array(totalTiles).fill(false);
@@ -937,8 +947,8 @@ function nextClassicRound() {
   if (memoryGame.currentRound <= memoryGame.maxRounds) {
     startClassicRound();
   } else {
-    memoryGame.gameCompleted = true;
-    gameState = "memory_classic_complete";
+    // Should not reach here as endClassicRound handles game completion
+    endMemoryClassicGame();
   }
 }
 
@@ -961,10 +971,10 @@ function endClassicRound() {
       nextClassicRound();
     }, 2000);
   } else {
+    // Game completed after 5 rounds - show game over overlay
     memoryGame.feedback = `Game Complete! Final Score: ${memoryGame.score}`;
     setTimeout(() => {
-      memoryGame.gameCompleted = true;
-      gameState = "memory_classic_complete";
+      endMemoryClassicGame();
     }, 2000);
   }
 }
@@ -1076,7 +1086,7 @@ function makeBattleGrid(avatarIdx, avatars, roundIdx) {
     let imgs_needed = 16 - avatars;
     let imgs = [];
     while (imgs.length < imgs_needed) {
-      pool = pool.sort(() => Math.random() - 0.5);
+      pool = fisherYatesShuffle(pool);
       imgs = imgs.concat(pool.slice(0, Math.min(imgs_needed - imgs.length, pool.length)));
     }
     let img_ptr = 0;
@@ -1416,43 +1426,6 @@ function drawMemoryClassicRules() {
   ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
 }
 
-function drawMemoryClassicComplete() {
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  
-  ctx.fillStyle = "#ff69b4";
-  ctx.font = "40px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText("Game Complete!", WIDTH / 2, 100);
-  
-  ctx.fillStyle = "#fff";
-  ctx.font = "28px Arial";
-  ctx.fillText("Final Score: " + memoryGame.score, WIDTH / 2, 150);
-  
-  // Score table
-  ctx.font = "24px Arial";
-  ctx.fillText("Round Summary:", WIDTH / 2, 200);
-  
-  ctx.font = "20px Arial";
-  for (let i = 0; i < memoryGame.roundScores.length; i++) {
-    ctx.fillText(`Round ${i + 1}: ${memoryGame.roundScores[i]} points`, WIDTH / 2, 230 + i * 30);
-  }
-  
-  // Buttons: Again and Quit
-  let againBtn = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 100, 150, 60);
-  let quitBtn = new Button("QUIT", WIDTH / 2 + 100, HEIGHT - 100, 150, 60);
-  againBtn.draw();
-  quitBtn.draw();
-  
-  // Store buttons for click handling
-  memoryGame.completeButtons = [againBtn, quitBtn];
-  
-  // Copyright
-  ctx.font = "16px Arial";
-  ctx.fillStyle = "#666";
-  ctx.textAlign = "right";
-  ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
-}
-
 function drawMemoryGameClassic() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   
@@ -1473,9 +1446,12 @@ function drawMemoryGameClassic() {
   ctx.textAlign = "left";
   ctx.fillText(`Round: ${memoryGame.currentRound}/${memoryGame.maxRounds}`, 20, 40);
   ctx.fillText(`Score: ${memoryGame.score}`, 20, 70);
+  
+  // Timer with color coding (red when < 5 seconds)
+  ctx.fillStyle = memoryGame.timeRemaining < 5 ? "#ff0000" : "#ff69b4";
   ctx.fillText(`Time: ${Math.ceil(memoryGame.timeRemaining)}s`, 20, 100);
   
-  // Title
+  // Reset color for title
   ctx.fillStyle = "#ff69b4";
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
@@ -1941,16 +1917,6 @@ canvas.addEventListener("click", function (e) {
         }
       }
     }
-  } else if (gameState === "memory_classic_complete") {
-    if (memoryGame.completeButtons && memoryGame.completeButtons.length >= 2) {
-      if (memoryGame.completeButtons[0].isInside(mx, my)) { 
-        // AGAIN button
-        startMemoryGameClassic();
-      } else if (memoryGame.completeButtons[1].isInside(mx, my)) { 
-        // QUIT button
-        gameState = "menu"; 
-      }
-    }
   } else if (gameState === "memory_memomu") {
     if (memoryMemomuButtons[0].isInside(mx, my)) { gameState = "memory_menu"; }
     else if (memoryMemomuButtons[1].isInside(mx, my)) { startMemoryGameMemomu(); drawMemoryGameMemomu(); }
@@ -2319,7 +2285,6 @@ function draw() {
   else if (gameState === "memory_menu") drawMemoryMenu();
   else if (gameState === "memory_classic_rules") drawMemoryClassicRules();
   else if (gameState === "memory_classic") drawMemoryGameClassic();
-  else if (gameState === "memory_classic_complete") drawMemoryClassicComplete();
   else if (gameState === "memory_memomu") drawMemoryGameMemomu();
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
