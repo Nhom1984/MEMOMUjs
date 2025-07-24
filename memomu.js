@@ -114,6 +114,14 @@ let gameOverOverlay = {
   buttons: []
 };
 
+// --- CLASSIC MEMORY SCORE TABLE ---
+let classicScoreTable = {
+  active: false,
+  roundScores: [],
+  totalScore: 0,
+  buttons: []
+};
+
 // --- HIGH SCORE SYSTEM ---
 let highScores = {
   musicMemory: [],
@@ -444,7 +452,117 @@ function endMusicMemoryGame() {
 }
 
 function endMemoryClassicGame() {
-  showGameOverOverlay("memoryClassic", memoryGame.score);
+  showClassicScoreTable();
+}
+
+// --- CLASSIC MEMORY SCORE TABLE FUNCTIONS ---
+function showClassicScoreTable() {
+  classicScoreTable.active = true;
+  classicScoreTable.roundScores = [...memoryGame.roundScores];
+  classicScoreTable.totalScore = memoryGame.score;
+  
+  // Add to high scores
+  addHighScore("memoryClassic", memoryGame.score);
+  
+  // Setup score table buttons: AGAIN and MENU (centered), QUIT at bottom
+  classicScoreTable.buttons = [
+    new Button("AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 120, 200, 50),
+    new Button("MENU", WIDTH / 2 + 120, HEIGHT / 2 + 120, 200, 50),
+    new Button("QUIT", WIDTH / 2, HEIGHT / 2 + 180, 150, 48)
+  ];
+}
+
+function hideClassicScoreTable() {
+  classicScoreTable.active = false;
+  classicScoreTable.roundScores = [];
+  classicScoreTable.totalScore = 0;
+  classicScoreTable.buttons = [];
+}
+
+function drawClassicScoreTable() {
+  if (!classicScoreTable.active) return;
+
+  ctx.save();
+  
+  // Semi-transparent background
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = "#222";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.globalAlpha = 1;
+
+  // Main container (larger for score table)
+  ctx.fillStyle = "#ffb6c1";
+  ctx.strokeStyle = "#ff1493";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(WIDTH / 2 - 350, HEIGHT / 2 - 200, 700, 400, 20);
+  ctx.fill();
+  ctx.stroke();
+
+  // Title
+  ctx.font = "36px Arial";
+  ctx.fillStyle = "#8b0000";
+  ctx.textAlign = "center";
+  ctx.fillText("GAME COMPLETE!", WIDTH / 2, HEIGHT / 2 - 150);
+
+  // Score table header
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#000";
+  ctx.fillText("Round-by-Round Performance:", WIDTH / 2, HEIGHT / 2 - 100);
+
+  // Score table content
+  ctx.font = "18px Arial";
+  ctx.textAlign = "left";
+  let startY = HEIGHT / 2 - 70;
+  
+  for (let i = 0; i < classicScoreTable.roundScores.length; i++) {
+    let roundScore = classicScoreTable.roundScores[i];
+    ctx.fillText(`Round ${i + 1}: ${roundScore} points`, WIDTH / 2 - 200, startY + i * 25);
+  }
+  
+  // Total score
+  ctx.font = "28px Arial";
+  ctx.fillStyle = "#8b0000";
+  ctx.textAlign = "center";
+  ctx.fillText(`Total Score: ${classicScoreTable.totalScore}`, WIDTH / 2, HEIGHT / 2 + 50);
+
+  // High score info
+  const topScore = getTopScore("memoryClassic");
+  if (classicScoreTable.totalScore === topScore && topScore > 0) {
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#ffd700";
+    ctx.fillText("🏆 NEW HIGH SCORE! 🏆", WIDTH / 2, HEIGHT / 2 + 80);
+  } else if (topScore > 0) {
+    ctx.font = "18px Arial";
+    ctx.fillStyle = "#4b0082";
+    ctx.fillText("Best: " + topScore, WIDTH / 2, HEIGHT / 2 + 80);
+  }
+
+  // Draw buttons
+  classicScoreTable.buttons.forEach(b => b.draw());
+
+  ctx.restore();
+}
+
+function handleClassicScoreTableClick(mx, my) {
+  if (!classicScoreTable.active) return false;
+
+  for (let button of classicScoreTable.buttons) {
+    if (button.isInside(mx, my)) {
+      if (button.label === "AGAIN") {
+        hideClassicScoreTable();
+        startMemoryGameClassic();
+      } else if (button.label === "MENU") {
+        hideClassicScoreTable();
+        gameState = "mode";
+      } else if (button.label === "QUIT") {
+        hideClassicScoreTable();
+        gameState = "menu";
+      }
+      return true;
+    }
+  }
+  return true; // Block all other clicks when score table is active
 }
 
 function endMemoryMemomuGame() {
@@ -863,19 +981,14 @@ function handleMusicMemTileClick(tileIdx) {
 // --- CLASSIC MEMORY MODE LOGIC ---
 // Helper functions for upgraded Classic Memory
 function getClassicRoundGrid(round) {
-  switch(round) {
-    case 1: return { rows: 3, cols: 4, pairs: 6 };
-    case 2: return { rows: 4, cols: 4, pairs: 8 };
-    case 3: return { rows: 4, cols: 5, pairs: 10 };
-    case 4: return { rows: 5, cols: 5, pairs: 12 }; // 25 tiles, 12 pairs + 1 extra
-    case 5: return { rows: 5, cols: 6, pairs: 15 };
-    default: return { rows: 3, cols: 4, pairs: 6 };
-  }
+  // All rounds now use 6x5 grid (30 tiles) with increasing pairs
+  const pairs = Math.min(15, 3 + round); // Start with 4 pairs in round 1, max 15 pairs
+  return { rows: 5, cols: 6, pairs: pairs };
 }
 
 function initializeClassicMemoryUpgraded() {
   memoryGame.currentRound = 1;
-  memoryGame.maxRounds = 5;
+  memoryGame.maxRounds = 10; // Extended to 10 rounds
   memoryGame.roundScores = [];
   memoryGame.score = 0;
   memoryGame.showRules = true;
@@ -971,7 +1084,7 @@ function endClassicRound() {
       nextClassicRound();
     }, 2000);
   } else {
-    // Game completed after 5 rounds - show game over overlay
+    // Game completed after 10 rounds - show score table
     memoryGame.feedback = `Game Complete! Final Score: ${memoryGame.score}`;
     setTimeout(() => {
       endMemoryClassicGame();
@@ -1402,20 +1515,18 @@ function drawMemoryClassicRules() {
   
   ctx.fillStyle = "#333";
   ctx.font = "24px Arial";
-  ctx.fillText("5 Rounds with Progressive Grids:", WIDTH / 2, 180);
+  ctx.fillText("10 Rounds with 6×5 Grid (30 tiles):", WIDTH / 2, 180);
   
   ctx.font = "20px Arial";
-  ctx.fillText("Round 1: 3×4 grid (6 pairs)", WIDTH / 2, 220);
-  ctx.fillText("Round 2: 4×4 grid (8 pairs)", WIDTH / 2, 250);
-  ctx.fillText("Round 3: 4×5 grid (10 pairs)", WIDTH / 2, 280);
-  ctx.fillText("Round 4: 5×5 grid (12 pairs)", WIDTH / 2, 310);
-  ctx.fillText("Round 5: 5×6 grid (15 pairs)", WIDTH / 2, 340);
+  ctx.fillText("All rounds use same 6×5 grid layout", WIDTH / 2, 220);
+  ctx.fillText("Progressive difficulty: 4-15 pairs per round", WIDTH / 2, 250);
+  ctx.fillText("Game ends after 10 rounds or failed round", WIDTH / 2, 280);
   
   ctx.font = "24px Arial";
-  ctx.fillText("Scoring:", WIDTH / 2, 400);
+  ctx.fillText("Scoring:", WIDTH / 2, 340);
   ctx.font = "20px Arial";
-  ctx.fillText("1 point per pair + (seconds under 30) × round number", WIDTH / 2, 430);
-  ctx.fillText("Each round: 30 seconds maximum", WIDTH / 2, 460);
+  ctx.fillText("1 point per pair + (seconds under 30) × round number", WIDTH / 2, 370);
+  ctx.fillText("Each round: 30 seconds maximum", WIDTH / 2, 400);
   
   memoryClassicRulesButtons.forEach(b => b.draw());
   
@@ -1434,9 +1545,13 @@ function drawMemoryGameClassic() {
     let elapsed = (performance.now() - memoryGame.roundStartTime) / 1000;
     memoryGame.timeRemaining = Math.max(0, 30 - elapsed);
     
-    // Check if time's up
+    // Check if time's up - end game if player failed to find all pairs
     if (memoryGame.timeRemaining <= 0 && memoryGame.pairsFound < memoryGame.roundPairCount) {
-      endClassicRound();
+      // Player failed the round - game over
+      memoryGame.feedback = `Time's up! Game Over! Final Score: ${memoryGame.score}`;
+      setTimeout(() => {
+        endMemoryClassicGame();
+      }, 2000);
     }
   }
   
@@ -1524,8 +1639,8 @@ function drawMemoryGameClassic() {
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
 
-  // Draw game over overlay if active
-  drawGameOverOverlay();
+  // Draw Classic Memory score table if active
+  drawClassicScoreTable();
 }
 function drawMemoryGameMemomu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -1805,6 +1920,11 @@ canvas.addEventListener("click", function (e) {
   let rect = canvas.getBoundingClientRect();
   let mx = e.clientX - rect.left;
   let my = e.clientY - rect.top;
+
+  // Check Classic Memory score table first - blocks all other interactions
+  if (handleClassicScoreTableClick(mx, my)) {
+    return;
+  }
 
   // Check game over overlay first - blocks all other interactions
   if (handleGameOverOverlayClick(mx, my)) {
