@@ -102,8 +102,8 @@ class Button {
 }
 
 // --- GAME STATE ---
-let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu, monluck, battle
-let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuButtons = [], memoryMemomuScoreButtons = [], monluckButtons = [], battleButtons = [];
+let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu_rules, memory_memomu, monluck, battle
+let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuRulesButtons = [], memoryMemomuButtons = [], memoryMemomuScoreButtons = [], monluckButtons = [], battleButtons = [];
 let soundOn = true;
 
 // --- GAME OVER OVERLAY ---
@@ -189,20 +189,23 @@ let memomuGame = {
   grid: [],
   flashSeq: [],
   found: [],
-  badClicks: 0,
-  left: 0,
+  clicksUsed: 0,
+  allowedClicks: 0,
   showSplash: true,
   splashTimer: 45,
   splashMsg: "MEMOMU Memory",
   round: 1,
   score: 0,
   timer: 0,
+  timeLimit: 0,
+  timeStarted: 0,
   phase: "show", // show, guess, done
   feedback: "",
   maxRounds: 10,
   roundScores: [], // Track score for each round
   gameCompleted: false,
-  showScoreTable: false
+  showScoreTable: false,
+  showGo: false // For GO button after rules
 };
 
 // --- MONLUCK MODE DATA ---
@@ -499,7 +502,11 @@ function setupButtons() {
   memoryClassicButtons = [
     new Button("QUIT", WIDTH / 2, HEIGHT - 60, 150, 48)
   ];
+  memoryMemomuRulesButtons = [
+    new Button("GOT IT", WIDTH / 2, HEIGHT - 100, 200, 60)
+  ];
   memoryMemomuButtons = [
+    new Button("GO", WIDTH / 2, HEIGHT - 100, 180, 60),
     new Button("QUIT", WIDTH / 2, HEIGHT - 60, 130, 48)
   ];
   memoryMemomuScoreButtons = [
@@ -998,6 +1005,7 @@ function startMemoryGameMemomu() {
   setupMemoryMemomuRound();
 }
 function setupMemoryMemomuRound() {
+  // 6 columns × 5 rows grid
   memomuGame.grid = createGrid(5, 6, 85, 10, 125);
   let n = memomuGame.round;
   memomuGame.flashSeq = [];
@@ -1009,9 +1017,18 @@ function setupMemoryMemomuRound() {
   }
   memomuGame.flashSeq = chosen;
   memomuGame.found = [];
-  memomuGame.badClicks = 0;
-  memomuGame.left = n + 1;
+  memomuGame.clicksUsed = 0;
+  memomuGame.allowedClicks = n + 1; // N+1 clicks allowed
+  
+  // Calculate time limit: Round 1 = 3s, Round 2+ = N + 2*(N-1)
+  if (n === 1) {
+    memomuGame.timeLimit = 3;
+  } else {
+    memomuGame.timeLimit = n + 2 * (n - 1);
+  }
+  
   memomuGame.timer = 0;
+  memomuGame.timeStarted = 0;
   memomuGame.phase = "show";
   memomuGame.feedback = "";
 }
@@ -1435,6 +1452,65 @@ function drawMemoryClassicRules() {
   ctx.fillText("© 2025 Nhom1984", WIDTH - 20, HEIGHT - 15);
 }
 
+// --- MEMOMU MEMORY RULES DRAWING FUNCTION ---
+function drawMemomuMemoryRules() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+  // Light pink background
+  ctx.fillStyle = "#ffb6c1";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // Rules table
+  ctx.fillStyle = "#ff69b4";
+  ctx.font = "36px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("MEMOMU Memory Rules", WIDTH / 2, 90);
+
+  ctx.fillStyle = "#333";
+  ctx.font = "22px Arial";
+  ctx.fillText("Sequential Round-Based Memory Game:", WIDTH / 2, 140);
+
+  ctx.font = "18px Arial";
+  ctx.textAlign = "left";
+  let startX = 80;
+  let startY = 180;
+  let lineHeight = 28;
+
+  const rules = [
+    "• Grid: 6 columns × 5 rows (30 tiles total)",
+    "• Round N: Find N images that will flash",
+    "• After rules, click 'GO' to start - no GO buttons between rounds",
+    "",
+    "Each Round:",
+    "  - Watch N images flash in sequence",
+    "  - Click all N images in any order (order doesn't matter)",
+    "  - You get N+1 clicks maximum",
+    "",
+    "Time Limits:",
+    "  - Round 1: 3 seconds",
+    "  - Round 2+: N + 2×(N-1) seconds",
+    "  - Example: Round 7 = 7 + 2×6 = 19 seconds",
+    "",
+    "Scoring:",
+    "  - Perfect round (all found, no extra clicks): Round number + time bonus",
+    "  - Non-perfect (all found, but extra clicks): Advance, no bonus",
+    "  - Failed round: 1 point per image found, game ends",
+    "",
+    "Game ends if time runs out or too many wrong clicks used!"
+  ];
+
+  for (let i = 0; i < rules.length; i++) {
+    ctx.fillText(rules[i], startX, startY + i * lineHeight);
+  }
+
+  memoryMemomuRulesButtons.forEach(b => b.draw());
+
+  ctx.font = "20px Arial";
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "right";
+  ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
+}
+
 function drawMemoryGameClassic() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -1548,11 +1624,12 @@ function drawMemomuScoreTable() {
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
   let startY = 120;
-  ctx.fillText("Round | Score | Perfect", WIDTH / 2, startY);
+  ctx.fillText("Round | Score | Perfect | Completed", WIDTH / 2, startY);
 
   for (let i = 0; i < memomuGame.roundScores.length; i++) {
     let round = memomuGame.roundScores[i];
-    ctx.fillText(`${round.round} | ${round.score} | ${round.perfect ? "YES" : "NO"}`, WIDTH / 2, startY + 30 + (i * 25));
+    let statusText = round.completed ? (round.perfect ? "Perfect" : "Complete") : "Failed";
+    ctx.fillText(`${round.round} | ${round.score} | ${round.perfect ? "YES" : "NO"} | ${statusText}`, WIDTH / 2, startY + 30 + (i * 25));
   }
 
   ctx.font = "28px Arial";
@@ -1563,18 +1640,66 @@ function drawMemomuScoreTable() {
 }
 function drawMemoryGameMemomu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  
+  // Title
   ctx.fillStyle = "#ff69b4";
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MEMOMU Memory", WIDTH / 2, 90);
-  ctx.font = "22px Arial";
+  
+  // Show GO button if needed
+  if (memomuGame.showGo) {
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#333";
+    ctx.fillText("Click GO to start the game!", WIDTH / 2, HEIGHT / 2);
+    memoryMemomuButtons.forEach(b => b.draw());
+    return;
+  }
+  
+  // Game UI - Top left area for round, score, timer
+  ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
-  ctx.fillText("Round: " + memomuGame.round + " / " + memomuGame.maxRounds, WIDTH / 10, 70);
+  ctx.textAlign = "left";
+  ctx.fillText("Round: " + memomuGame.round + " / " + memomuGame.maxRounds, 20, 50);
+  ctx.fillText("Score: " + memomuGame.score, 20, 75);
+  
+  // Timer
+  if (memomuGame.phase === "guess") {
+    memomuGame.timer = (performance.now() / 1000) - memomuGame.timeStarted;
+    let timeLeft = Math.max(0, memomuGame.timeLimit - memomuGame.timer);
+    
+    // Check if time is up
+    if (timeLeft <= 0 && memomuGame.phase === "guess") {
+      // Time's up - end the round as failed
+      memomuGame.phase = "done";
+      let pts = memomuGame.found.length;
+      memomuGame.score += pts;
+      memomuGame.roundScores.push({ 
+        round: memomuGame.round, 
+        score: pts, 
+        perfect: false,
+        completed: false
+      });
+      memomuGame.feedback = `Time's up! Found ${memomuGame.found.length}/${memomuGame.flashSeq.length}. Game Over!`;
+      
+      setTimeout(() => {
+        memomuGame.gameCompleted = true;
+        memomuGame.showScoreTable = true;
+        gameState = "memory_memomu_score";
+      }, 2000);
+    }
+    
+    ctx.fillStyle = timeLeft <= 3 ? "#ff0000" : "#fff";
+    ctx.fillText("Time: " + Math.ceil(timeLeft) + "s", 20, 100);
+  }
+  
+  // Grid
   memomuGame.grid.forEach((tile, i) => {
     ctx.save();
     let img = assets.images["mmimg" + (i + 1)];
-    if (tile.revealed && img) ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
-    else {
+    if (tile.revealed && img) {
+      ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
+    } else {
       ctx.fillStyle = "#333";
       ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
     }
@@ -1583,13 +1708,26 @@ function drawMemoryGameMemomu() {
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
-  memoryMemomuButtons.forEach(b => b.draw());
-  ctx.font = "28px Arial";
+  
+  // Phase indicator and feedback
+  ctx.font = "22px Arial";
   ctx.fillStyle = "#fff";
-  ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 120);
-  ctx.font = "21px Arial";
+  ctx.textAlign = "center";
+  if (memomuGame.phase === "show") {
+    ctx.fillText("Watch the sequence...", WIDTH / 2, HEIGHT - 140);
+  } else if (memomuGame.phase === "guess") {
+    ctx.fillText(`Find ${memomuGame.flashSeq.length} images! (${memomuGame.clicksUsed}/${memomuGame.allowedClicks} clicks)`, WIDTH / 2, HEIGHT - 140);
+  }
+  
+  // Feedback
+  ctx.font = "20px Arial";
   ctx.fillStyle = "#ffb6c1";
-  ctx.fillText("Score: " + memomuGame.score, WIDTH / 11, HEIGHT - 600);
+  ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 110);
+  
+  // QUIT button always at bottom
+  memoryMemomuButtons[1].draw();
+  
+  // Splash screen
   if (memomuGame.showSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1601,6 +1739,8 @@ function drawMemoryGameMemomu() {
     ctx.fillText(memomuGame.splashMsg, WIDTH / 2, HEIGHT / 2);
     ctx.restore();
   }
+  
+  // Copyright
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
@@ -1924,11 +2064,16 @@ canvas.addEventListener("click", function (e) {
     }
   } else if (gameState === "memory_menu") {
     if (memoryMenuButtons[0].isInside(mx, my)) { gameState = "memory_classic_rules"; startMemoryGameClassic(); }
-    else if (memoryMenuButtons[1].isInside(mx, my)) { gameState = "memory_memomu"; startMemoryGameMemomu(); }
+    else if (memoryMenuButtons[1].isInside(mx, my)) { gameState = "memory_memomu_rules"; }
     else if (memoryMenuButtons[2].isInside(mx, my)) { gameState = "mode"; }
   } else if (gameState === "memory_classic_rules") {
     if (memoryClassicRulesButtons[0].isInside(mx, my)) {
       startClassicRound();
+    }
+  } else if (gameState === "memory_memomu_rules") {
+    if (memoryMemomuRulesButtons[0].isInside(mx, my)) {
+      gameState = "memory_memomu";
+      memomuGame.showGo = true;
     }
   } else if (gameState === "memory_classic") {
     if (memoryClassicButtons[0].isInside(mx, my)) { gameState = "menu"; }
@@ -1948,10 +2093,12 @@ canvas.addEventListener("click", function (e) {
       }
     }
   } else if (gameState === "memory_memomu") {
-    if (memoryMemomuButtons[0].isInside(mx, my)) { gameState = "memory_menu"; }
-    else if (memoryMemomuButtons[1].isInside(mx, my)) { startMemoryGameMemomu(); drawMemoryGameMemomu(); }
-    else if (memoryMemomuButtons[2].isInside(mx, my)) { gameState = "menu"; }
-    if (!memomuGame.showSplash && memomuGame.phase === "guess" && memomuGame.left > 0) {
+    if (memoryMemomuButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
+    else if (memoryMemomuButtons[0].isInside(mx, my) && memomuGame.showGo) { 
+      memomuGame.showGo = false;
+      startMemoryGameMemomu(); 
+    }
+    if (!memomuGame.showSplash && !memomuGame.showGo && memomuGame.phase === "guess" && memomuGame.clicksUsed < memomuGame.allowedClicks) {
       for (let i = 0; i < memomuGame.grid.length; i++) {
         let tile = memomuGame.grid[i];
         if (
@@ -1985,6 +2132,13 @@ canvas.addEventListener("click", function (e) {
         }
       }
     }
+  } else if (gameState === "memory_memomu_score") {
+    if (memoryMemomuScoreButtons[0].isInside(mx, my)) { 
+      gameState = "memory_memomu"; 
+      memomuGame.showGo = true; 
+    }
+    else if (memoryMemomuScoreButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
+    else if (memoryMemomuScoreButtons[2].isInside(mx, my)) { gameState = "menu"; }
   } else if (gameState === "battle") {
     handleBattleClick(mx, my);
   }
@@ -2044,41 +2198,79 @@ function handleMemoryTileClickClassic(idx) {
 function handleMemoryTileClickMemomu(idx) {
   let tile = memomuGame.grid[idx];
   if (tile.revealed) return;
-  memomuGame.left--;
+  
+  memomuGame.clicksUsed++;
   tile.revealed = true;
+  
   if (memomuGame.flashSeq.includes(idx) && !memomuGame.found.includes(idx)) {
+    // Correct image found
     memomuGame.found.push(idx);
     let sfx = assets.sounds["yupi"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#00ff00";
   } else {
-    memomuGame.badClicks++;
+    // Wrong image clicked
     let sfx = assets.sounds["kuku"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#ff0000";
   }
-  let perfect = (memomuGame.found.length === memomuGame.flashSeq.length && memomuGame.badClicks === 0);
-  if (memomuGame.found.length === memomuGame.flashSeq.length || memomuGame.badClicks >= 2 || memomuGame.left === 0) {
-    let roundTime = Math.max(0, 5 + (memomuGame.round - 1) * 2 - (performance.now() / 1000 - memomuGame.timer));
-    let pts = memomuGame.found.length + (perfect ? 2 : 0) + (perfect ? Math.floor(roundTime) : 0);
-    memomuGame.score += pts;
-    memomuGame.roundScores.push({ round: memomuGame.round, score: pts, perfect: perfect });
-    memomuGame.feedback = "Round: " + memomuGame.round + " Score: +" + pts;
+  
+  // Check if round is complete
+  let allFound = memomuGame.found.length === memomuGame.flashSeq.length;
+  let isPerfect = allFound && memomuGame.clicksUsed === memomuGame.flashSeq.length;
+  let isComplete = allFound || memomuGame.clicksUsed >= memomuGame.allowedClicks;
+  
+  if (isComplete) {
     memomuGame.phase = "done";
+    
+    let pts = 0;
+    if (allFound) {
+      if (isPerfect) {
+        // Perfect round: round number + time bonus
+        let timeLeft = Math.max(0, memomuGame.timeLimit - memomuGame.timer);
+        let timeBonus = Math.floor(timeLeft);
+        pts = memomuGame.round + timeBonus;
+        memomuGame.feedback = `Perfect! Round ${memomuGame.round} + ${timeBonus} time bonus = ${pts} pts`;
+      } else {
+        // Non-perfect round: just advance, no points
+        pts = 0;
+        memomuGame.feedback = `Complete! Extra clicks used, no bonus. Advancing...`;
+      }
+    } else {
+      // Failed round: 1 point per image found, game ends
+      pts = memomuGame.found.length;
+      memomuGame.feedback = `Failed! Found ${memomuGame.found.length}/${memomuGame.flashSeq.length}. Game Over!`;
+    }
+    
+    memomuGame.score += pts;
+    memomuGame.roundScores.push({ 
+      round: memomuGame.round, 
+      score: pts, 
+      perfect: isPerfect,
+      completed: allFound
+    });
+    
     setTimeout(() => {
-      memomuGame.round++;
-      if (memomuGame.round > memomuGame.maxRounds) {
+      if (!allFound) {
+        // Game over - failed round
+        memomuGame.gameCompleted = true;
+        memomuGame.showScoreTable = true;
+        gameState = "memory_memomu_score";
+      } else if (memomuGame.round >= memomuGame.maxRounds) {
+        // Game completed - all rounds done
         memomuGame.gameCompleted = true;
         memomuGame.showScoreTable = true;
         gameState = "memory_memomu_score";
       } else {
+        // Next round
+        memomuGame.round++;
         memomuGame.showSplash = true;
         memomuGame.splashTimer = 45;
         memomuGame.splashMsg = "Round " + memomuGame.round;
         setupMemoryMemomuRound();
         drawMemoryGameMemomu();
       }
-    }, 1100);
+    }, 2000);
   }
 }
 function runMemoryMemomuFlashSequence() {
@@ -2097,10 +2289,10 @@ function runMemoryMemomuFlashSequence() {
       }, 450);
     } else {
       memomuGame.phase = "guess";
-      memomuGame.left = memomuGame.round + 1;
+      memomuGame.clicksUsed = 0;
       memomuGame.found = [];
-      memomuGame.badClicks = 0;
-      memomuGame.timer = performance.now() / 1000;
+      memomuGame.timer = 0;
+      memomuGame.timeStarted = performance.now() / 1000;
       memomuGame.grid.forEach((t) => { t.revealed = false; t.feedback = null; });
       drawMemoryGameMemomu();
     }
@@ -2316,6 +2508,7 @@ function draw() {
   else if (gameState === "memory_menu") drawMemoryMenu();
   else if (gameState === "memory_classic_rules") drawMemoryClassicRules();
   else if (gameState === "memory_classic") drawMemoryGameClassic();
+  else if (gameState === "memory_memomu_rules") drawMemomuMemoryRules();
   else if (gameState === "memory_memomu") drawMemoryGameMemomu();
   else if (gameState === "memory_memomu_score") drawMemomuScoreTable();
   else if (gameState === "monluck") drawMonluckGame();
