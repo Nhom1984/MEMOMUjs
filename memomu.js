@@ -170,7 +170,7 @@ let memoryGame = {
   splashTimer: 40,
   splashMsg: "Classic Memory",
   score: 0,
-  
+
   // New upgraded Classic Memory features
   currentRound: 1,
   maxRounds: 5,
@@ -869,7 +869,7 @@ function handleMusicMemTileClick(tileIdx) {
 // --- CLASSIC MEMORY MODE LOGIC ---
 // Helper functions for upgraded Classic Memory
 function getClassicRoundGrid(round) {
-  switch(round) {
+  switch (round) {
     case 1: return { rows: 3, cols: 4, pairs: 6 };
     case 2: return { rows: 4, cols: 4, pairs: 8 };
     case 3: return { rows: 4, cols: 5, pairs: 10 };
@@ -886,7 +886,7 @@ function initializeClassicMemoryUpgraded() {
   memoryGame.score = 0;
   memoryGame.showRules = true;
   memoryGame.gameCompleted = false;
-  
+
   // Prepare all available images (1-33 + monad = 34 total)
   memoryGame.allImages = [];
   for (let i = 1; i <= 33; i++) {
@@ -898,30 +898,30 @@ function initializeClassicMemoryUpgraded() {
 function setupClassicRound(round) {
   let gridConfig = getClassicRoundGrid(round);
   memoryGame.grid = createGrid(gridConfig.rows, gridConfig.cols, 80, 8, 160);
-  
+
   let totalTiles = gridConfig.rows * gridConfig.cols;
   memoryGame.roundPairCount = gridConfig.pairs;
-  
+
   // Select random images for pairs using Fisher-Yates shuffle
   let shuffledImages = fisherYatesShuffle(memoryGame.allImages);
   let selectedImages = shuffledImages.slice(0, gridConfig.pairs);
-  
+
   // Create pairs array
   let pairIds = [];
   selectedImages.forEach(img => {
     pairIds.push(img);
     pairIds.push(img);
   });
-  
+
   // For odd number of tiles (round 4), add one extra image
   if (totalTiles % 2 === 1) {
     let extraImage = shuffledImages[gridConfig.pairs];
     pairIds.push(extraImage);
   }
-  
+
   // Shuffle the pairs using Fisher-Yates algorithm
   pairIds = fisherYatesShuffle(pairIds);
-  
+
   memoryGame.pairIds = pairIds;
   memoryGame.revealed = Array(totalTiles).fill(false);
   memoryGame.matched = Array(totalTiles).fill(false);
@@ -970,7 +970,7 @@ function endClassicRound() {
   let roundScore = calculateRoundScore(timeUsed);
   memoryGame.roundScores.push(roundScore);
   memoryGame.score += roundScore;
-  
+
   if (memoryGame.currentRound < memoryGame.maxRounds) {
     memoryGame.feedback = `Round ${memoryGame.currentRound} Complete! +${roundScore} points`;
     setTimeout(() => {
@@ -998,7 +998,7 @@ function startMemoryGameMemomu() {
   setupMemoryMemomuRound();
 }
 function setupMemoryMemomuRound() {
-  memomuGame.grid = createGrid(6, 5, 85, 10, 125);
+  memomuGame.grid = createGrid(5, 6, 85, 10, 125);
   let n = memomuGame.round;
   memomuGame.flashSeq = [];
   let allIdx = Array.from({ length: 30 }, (_, i) => i);
@@ -1018,7 +1018,7 @@ function setupMemoryMemomuRound() {
 
 // --- MONLUCK LOGIC ---
 function startMonluckGame() {
-  monluckGame.grid = createGrid(6, 5, 85, 10, 125);
+  monluckGame.grid = createGrid(5, 6, 85, 10, 125);
   let allIdx = Array.from({ length: 30 }, (_, i) => i);
   monluckGame.monadIndices = [];
   while (monluckGame.monadIndices.length < 5) {
@@ -1398,36 +1398,36 @@ function drawMusicMemory() {
 // --- UPGRADED CLASSIC MEMORY DRAWING FUNCTIONS ---
 function drawMemoryClassicRules() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  
+
   // Light pink background
   ctx.fillStyle = "#ffb6c1";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  
+
   // Rules table
   ctx.fillStyle = "#ff69b4";
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Classic Memory Rules", WIDTH / 2, 100);
-  
+
   ctx.fillStyle = "#333";
   ctx.font = "24px Arial";
   ctx.fillText("5 Rounds with Progressive Grids:", WIDTH / 2, 180);
-  
+
   ctx.font = "20px Arial";
   ctx.fillText("Round 1: 3×4 grid (6 pairs)", WIDTH / 2, 220);
   ctx.fillText("Round 2: 4×4 grid (8 pairs)", WIDTH / 2, 250);
   ctx.fillText("Round 3: 4×5 grid (10 pairs)", WIDTH / 2, 280);
   ctx.fillText("Round 4: 5×5 grid (12 pairs)", WIDTH / 2, 310);
   ctx.fillText("Round 5: 5×6 grid (15 pairs)", WIDTH / 2, 340);
-  
+
   ctx.font = "24px Arial";
   ctx.fillText("Scoring:", WIDTH / 2, 400);
   ctx.font = "20px Arial";
   ctx.fillText("1 point per pair + (seconds under 30) × round number", WIDTH / 2, 430);
   ctx.fillText("Each round: 30 seconds maximum", WIDTH / 2, 460);
-  
+
   memoryClassicRulesButtons.forEach(b => b.draw());
-  
+
   // Copyright
   ctx.font = "16px Arial";
   ctx.fillStyle = "#666";
@@ -1437,50 +1437,50 @@ function drawMemoryClassicRules() {
 
 function drawMemoryGameClassic() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  
+
   // Update timer
   if (!memoryGame.showSplash && !memoryGame.lock) {
     let elapsed = (performance.now() - memoryGame.roundStartTime) / 1000;
     memoryGame.timeRemaining = Math.max(0, 30 - elapsed);
-    
+
     // Check if time's up
     if (memoryGame.timeRemaining <= 0 && memoryGame.pairsFound < memoryGame.roundPairCount) {
       endClassicRound();
     }
   }
-  
+
   // Round and score display at top left (like Music Memory)
   ctx.fillStyle = "#ff69b4";
   ctx.font = "24px Arial";
   ctx.textAlign = "left";
   ctx.fillText(`Round: ${memoryGame.currentRound}/${memoryGame.maxRounds}`, 20, 40);
   ctx.fillText(`Score: ${memoryGame.score}`, 20, 70);
-  
+
   // Timer with color coding (red when < 5 seconds)
   ctx.fillStyle = memoryGame.timeRemaining < 5 ? "#ff0000" : "#ff69b4";
   ctx.fillText(`Time: ${Math.ceil(memoryGame.timeRemaining)}s`, 20, 100);
-  
+
   // Reset color for title
   ctx.fillStyle = "#ff69b4";
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Classic Memory", WIDTH / 2, 50);
-  
+
   // Pairs progress
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
   ctx.fillText(`Pairs: ${memoryGame.pairsFound} / ${memoryGame.roundPairCount}`, WIDTH / 2, 120);
-  
+
   // Draw tiles
   memoryGame.grid.forEach((tile, i) => {
     ctx.save();
     let isRevealed = memoryGame.revealed[i] || memoryGame.matched[i];
-    
+
     // Get the correct image
     let pairId = memoryGame.pairIds[i];
     let imgName = pairId === 'monad' ? 'classicmonad' : `classicimg${pairId}`;
     let img = assets.images[imgName];
-    
+
     if (isRevealed && img) {
       // Show the image directly (no question marks in upgraded mode)
       ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
@@ -1489,31 +1489,31 @@ function drawMemoryGameClassic() {
       ctx.fillStyle = "#333";
       ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
     }
-    
+
     // Tile borders
-    if (memoryGame.matched[i]) { 
-      ctx.strokeStyle = "#00f2ff"; 
-      ctx.lineWidth = 4; 
-    } else if (isRevealed) { 
-      ctx.strokeStyle = "#ff69b4"; 
-      ctx.lineWidth = 3; 
-    } else { 
-      ctx.strokeStyle = "#262626"; 
-      ctx.lineWidth = 2; 
+    if (memoryGame.matched[i]) {
+      ctx.strokeStyle = "#00f2ff";
+      ctx.lineWidth = 4;
+    } else if (isRevealed) {
+      ctx.strokeStyle = "#ff69b4";
+      ctx.lineWidth = 3;
+    } else {
+      ctx.strokeStyle = "#262626";
+      ctx.lineWidth = 2;
     }
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
-  
+
   // Buttons (only QUIT)
   memoryClassicButtons.forEach(b => b.draw());
-  
+
   // Feedback
   ctx.font = "24px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.fillText(memoryGame.feedback, WIDTH / 2, HEIGHT - 120);
-  
+
   // Round splash
   if (memoryGame.showSplash) {
     ctx.save();
@@ -1526,7 +1526,7 @@ function drawMemoryGameClassic() {
     ctx.fillText(memoryGame.splashMsg, WIDTH / 2, HEIGHT / 2);
     ctx.restore();
   }
-  
+
   // Copyright
   ctx.font = "16px Arial";
   ctx.fillStyle = "#666";
@@ -1543,24 +1543,25 @@ function drawMemomuScoreTable() {
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MEMOMU Memory - Final Score", WIDTH / 2, 60);
-  
+
   // Score table
   ctx.font = "20px Arial";
   ctx.fillStyle = "#fff";
   let startY = 120;
   ctx.fillText("Round | Score | Perfect", WIDTH / 2, startY);
-  
+
   for (let i = 0; i < memomuGame.roundScores.length; i++) {
     let round = memomuGame.roundScores[i];
     ctx.fillText(`${round.round} | ${round.score} | ${round.perfect ? "YES" : "NO"}`, WIDTH / 2, startY + 30 + (i * 25));
   }
-  
+
   ctx.font = "28px Arial";
   ctx.fillStyle = "#ffd700";
   ctx.fillText(`Total Score: ${memomuGame.score}`, WIDTH / 2, startY + 50 + (memomuGame.roundScores.length * 25));
-  
+
   memoryMemomuScoreButtons.forEach(b => b.draw());
 }
+function drawMemoryGameMemomu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   ctx.fillStyle = "#ff69b4";
   ctx.font = "40px Arial";
@@ -1568,7 +1569,7 @@ function drawMemomuScoreTable() {
   ctx.fillText("MEMOMU Memory", WIDTH / 2, 90);
   ctx.font = "22px Arial";
   ctx.fillStyle = "#fff";
-  ctx.fillText("Round: " + memomuGame.round + " / " + memomuGame.maxRounds, WIDTH / 2, 135);
+  ctx.fillText("Round: " + memomuGame.round + " / " + memomuGame.maxRounds, WIDTH / 10, 70);
   memomuGame.grid.forEach((tile, i) => {
     ctx.save();
     let img = assets.images["mmimg" + (i + 1)];
@@ -1588,7 +1589,7 @@ function drawMemomuScoreTable() {
   ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 120);
   ctx.font = "21px Arial";
   ctx.fillStyle = "#ffb6c1";
-  ctx.fillText("Score: " + memomuGame.score, WIDTH / 2, HEIGHT - 80);
+  ctx.fillText("Score: " + memomuGame.score, WIDTH / 11, HEIGHT - 600);
   if (memomuGame.showSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1926,8 +1927,8 @@ canvas.addEventListener("click", function (e) {
     else if (memoryMenuButtons[1].isInside(mx, my)) { gameState = "memory_memomu"; startMemoryGameMemomu(); }
     else if (memoryMenuButtons[2].isInside(mx, my)) { gameState = "mode"; }
   } else if (gameState === "memory_classic_rules") {
-    if (memoryClassicRulesButtons[0].isInside(mx, my)) { 
-      startClassicRound(); 
+    if (memoryClassicRulesButtons[0].isInside(mx, my)) {
+      startClassicRound();
     }
   } else if (gameState === "memory_classic") {
     if (memoryClassicButtons[0].isInside(mx, my)) { gameState = "menu"; }
@@ -1993,7 +1994,7 @@ canvas.addEventListener("click", function (e) {
 function handleMemoryTileClickClassic(idx) {
   if (memoryGame.lock || memoryGame.revealed[idx] || memoryGame.matched[idx]) return;
   if (memoryGame.timeRemaining <= 0) return; // Time's up
-  
+
   memoryGame.revealed[idx] = true;
   if (memoryGame.firstIdx === null) {
     memoryGame.firstIdx = idx;
@@ -2004,11 +2005,11 @@ function handleMemoryTileClickClassic(idx) {
     memoryGame.lock = true;
     memoryGame.attempts++;
     drawMemoryGameClassic();
-    
+
     setTimeout(() => {
       let a = memoryGame.pairIds[memoryGame.firstIdx];
       let b = memoryGame.pairIds[memoryGame.secondIdx];
-      
+
       if (a === b) {
         // Match found!
         memoryGame.matched[memoryGame.firstIdx] = true;
@@ -2017,7 +2018,7 @@ function handleMemoryTileClickClassic(idx) {
         memoryGame.feedback = "Match!";
         let sfx = assets.sounds["yupi"];
         if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
-        
+
         // Check if round is complete
         if (memoryGame.pairsFound >= memoryGame.roundPairCount) {
           endClassicRound();
@@ -2030,7 +2031,7 @@ function handleMemoryTileClickClassic(idx) {
         let sfx = assets.sounds["buuuu"];
         if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
       }
-      
+
       memoryGame.firstIdx = null;
       memoryGame.secondIdx = null;
       memoryGame.lock = false;
