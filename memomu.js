@@ -1038,6 +1038,11 @@ function setupMemoryMemomuRound() {
 function startMonluckGame() {
   monluckGame.grid = createGrid(5, 6, 85, 10, 125);
   
+  // Initialize all tiles as not revealed
+  monluckGame.grid.forEach(tile => {
+    tile.revealed = false;
+  });
+  
   // Create an array of 30 images: 5 monad.png and 25 random images from image1-image33
   monluckGame.gridImages = [];
   
@@ -1785,9 +1790,13 @@ function drawMonluckGame() {
       else if (col === 5) displayText = "K"; // 6th tile
     }
     
-    // Always show the actual image (no question marks)
-    if (img) {
+    // Only show the image if the tile has been revealed (clicked)
+    if (tile.revealed && img) {
       ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
+    } else if (!tile.revealed) {
+      // Show blank tile when not revealed
+      ctx.fillStyle = "#333";
+      ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
     }
     
     // Apply highlight if tile was clicked
@@ -1804,15 +1813,23 @@ function drawMonluckGame() {
       ctx.lineWidth = 2;
     }
     
-    // Draw MON LUCK text over the image if this tile should display it AND the tile hasn't been revealed
+    // Draw MON LUCK text over the tile if this tile should display it AND the tile hasn't been revealed
     if (displayText && !tile.revealed) {
-      ctx.font = "36px Arial";
+      // Fill entire tile background for letters
+      ctx.fillStyle = "#333";
+      ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
+      
+      // Make letters large and fill the tile using color #836EF9
+      ctx.font = "48px Arial";
       ctx.fillStyle = "#836EF9";
       ctx.strokeStyle = "#000";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.textAlign = "center";
-      ctx.strokeText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2 + 12);
-      ctx.fillText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2 + 12);
+      ctx.textBaseline = "middle";
+      // Draw stroke for better visibility
+      ctx.strokeText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2);
+      // Draw filled text
+      ctx.fillText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2);
     }
     
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
