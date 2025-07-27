@@ -1038,21 +1038,22 @@ function setupMemoryMemomuRound() {
 function startMonluckGame() {
   monluckGame.grid = createGrid(5, 6, 85, 10, 125);
   
-  // Create an array of 30 random images where exactly one is the monad
+  // Create an array of 30 images: 5 monad.png and 25 random images from image1-image33
   monluckGame.gridImages = [];
   
-  // Choose one random position for the monad
-  let monadPosition = Math.floor(Math.random() * 30);
-  monluckGame.monadIndices = [monadPosition];
+  // Choose 5 random positions for the monads
+  let allPositions = Array.from({length: 30}, (_, i) => i);
+  let shuffledPositions = fisherYatesShuffle(allPositions);
+  monluckGame.monadIndices = shuffledPositions.slice(0, 5);
   
-  // Fill the grid with random images (1-30) and place monad at the chosen position
+  // Fill the grid with images
   for (let i = 0; i < 30; i++) {
-    if (i === monadPosition) {
+    if (monluckGame.monadIndices.includes(i)) {
       monluckGame.gridImages[i] = "monad"; // This will be the monad image
     } else {
-      // Use random images from the available set
-      let randomImageIndex = Math.floor(Math.random() * 30) + 1;
-      monluckGame.gridImages[i] = "mmimg" + randomImageIndex;
+      // Use random images from image1-image33
+      let randomImageIndex = Math.floor(Math.random() * 33) + 1;
+      monluckGame.gridImages[i] = "classicimg" + randomImageIndex;
     }
   }
   
@@ -1803,10 +1804,10 @@ function drawMonluckGame() {
       ctx.lineWidth = 2;
     }
     
-    // Draw MON LUCK text over the image if this tile should display it
-    if (displayText) {
+    // Draw MON LUCK text over the image if this tile should display it AND the tile hasn't been revealed
+    if (displayText && !tile.revealed) {
       ctx.font = "36px Arial";
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = "#836EF9";
       ctx.strokeStyle = "#000";
       ctx.lineWidth = 3;
       ctx.textAlign = "center";
@@ -1817,6 +1818,14 @@ function drawMonluckGame() {
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
+  
+  // Show progress during gameplay
+  if (!monluckGame.finished && !monluckGame.showSplash) {
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#836EF9";
+    ctx.textAlign = "center";
+    ctx.fillText(`Found: ${monluckGame.found.length}/5 monads`, WIDTH / 2, HEIGHT - 120);
+  }
   
   // Only show QUIT button during gameplay, positioned centrally at bottom
   if (!monluckGame.finished && !monluckGame.showSplash) {
@@ -2392,25 +2401,31 @@ function handleMonluckTileClick(idx) {
   let isMonad = monluckGame.monadIndices.includes(idx);
   
   if (isMonad) {
-    // Found the monad - success!
+    // Found a monad - success!
     monluckGame.found.push(idx);
     let sfx = assets.sounds["yupi"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#00ff00"; // Green highlight
     
-    // Calculate score based on remaining clicks
-    monluckGame.score = 100; // Base score for finding the monad
-    monluckGame.result = "YUPI! You found the monad!";
-    monluckGame.finished = true;
+    // Award 1 point for each monad found
+    monluckGame.score = monluckGame.found.length;
     
-    // Show success message after a short delay
-    setTimeout(() => {
-      monluckGame.showSplash = true;
-      monluckGame.splashMsg = `Victory!\nScore: ${monluckGame.score}`;
-      drawMonluckGame();
-    }, 1100);
+    // Check if all 5 monads have been found
+    if (monluckGame.found.length >= 5) {
+      monluckGame.result = `YUPI! You found all ${monluckGame.found.length} monads!`;
+      monluckGame.finished = true;
+      
+      // Show success message after a short delay
+      setTimeout(() => {
+        monluckGame.showSplash = true;
+        monluckGame.splashMsg = `Victory!\nScore: ${monluckGame.score}`;
+        drawMonluckGame();
+      }, 1100);
+    } else {
+      monluckGame.result = `Found ${monluckGame.found.length}/5 monads!`;
+    }
   } else {
-    // Wrong tile - highlight red
+    // Wrong tile - highlight red but continue game
     let sfx = assets.sounds["kuku"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#ff0000"; // Red highlight
