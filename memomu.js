@@ -41,7 +41,11 @@ for (let i = 1; i <= 6; i++) imageFiles.push({ name: `memimg${i}`, src: `assets/
 for (let i = 1; i <= 33; i++) imageFiles.push({ name: `classicimg${i}`, src: `assets/image${i}.png` });
 imageFiles.push({ name: `classicmonad`, src: `assets/monad.png` });
 for (let i = 1; i <= 30; i++) imageFiles.push({ name: `mmimg${i}`, src: `assets/image${(i % 12) + 1}.png` });
-for (let i = 1; i <= 13; i++) imageFiles.push({ name: `avatar${i}`, src: `assets/image${i}.png` }); // battle avatars
+// Load 16 battle avatars: A-P, R
+const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'R'];
+for (let i = 0; i < avatarLetters.length; i++) {
+  imageFiles.push({ name: `avatar${i + 1}`, src: `assets/${avatarLetters[i]}.png` });
+}
 for (let i = 14; i <= 33; i++) imageFiles.push({ name: `battle${i}`, src: `assets/image${i}.png` }); // battle grid images
 const soundFiles = [
   { name: "yupi", src: "assets/yupi.mp3" },
@@ -227,7 +231,7 @@ let monluckGame = {
 // --- BATTLE MODE DATA ---
 const battleNames = [
   "molandak", "moyaki", "lyraffe", "chog", "skrumpey", "spiky nad", "potato",
-  "mouch", "lazy", "retard", "bobr kurwa", "baba", "DAK"
+  "mouch", "lazy", "retard", "bobr kurwa", "baba", "DAK", "warrior", "sage", "phantom", "rebel"
 ];
 let battleGame = {
   state: "rules", // rules, choose, vs, end
@@ -1188,10 +1192,8 @@ function nextBattleRoundOrEnd() {
     battleGame.state = "end";
     battleGame.phase = "end";
   } else {
-    // Subsequent rounds start immediately after previous round's summary
-    battleGame.phase = "flash";
-    battleGame.flashing = true;
-    battleGame.anim = performance.now() / 1000;
+    // Subsequent rounds should go to ready state to show countdown
+    battleGame.phase = "ready";
     prepareBattleRound();
     battleGame.resultText = "";
     battleGame.playerTime = null;
@@ -1841,7 +1843,7 @@ function drawMonluckGame() {
     ctx.font = "24px Arial";
     ctx.fillStyle = "#836EF9";
     ctx.textAlign = "center";
-    ctx.fillText(`Found: ${monluckGame.found.length}/5 monads`, WIDTH / 2, HEIGHT - 80);
+    ctx.fillText(`Found: ${monluckGame.found.length}/5 monads | Tries: ${monluckGame.clicks}/5`, WIDTH / 2, HEIGHT - 80);
   }
 
   // Only show QUIT button during gameplay, positioned centrally at bottom
@@ -1926,7 +1928,8 @@ function drawBattleGame() {
     ctx.fillText("Choose your fighter!", WIDTH / 2, 60);
     let img_w = 80, img_h = 80, col1_x = WIDTH / 2 - 300, col2_x = WIDTH / 2 + 20, y_start = 90, y_gap = 44 + img_h / 2;
     battleGame.chooseRects = [];
-    for (let i = 0; i < 7; i++) {
+    // First column: 8 avatars (indices 0-7)
+    for (let i = 0; i < 8; i++) {
       let img = assets.images[`avatar${i + 1}`];
       let rect = { x: col1_x, y: y_start + i * y_gap, w: img_w, h: img_h };
       if (img) ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
@@ -1936,15 +1939,16 @@ function drawBattleGame() {
       ctx.fillText(battleNames[i], col1_x + img_w + 60, rect.y + img_h / 2 + 8);
       battleGame.chooseRects.push({ ...rect, idx: i });
     }
-    for (let i = 0; i < 6; i++) {
-      let img = assets.images[`avatar${i + 8}`];
+    // Second column: 8 avatars (indices 8-15)
+    for (let i = 0; i < 8; i++) {
+      let img = assets.images[`avatar${i + 9}`]; // avatar9 to avatar16
       let rect = { x: col2_x, y: y_start + i * y_gap, w: img_w, h: img_h };
       if (img) ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
       ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
       ctx.font = "24px Arial"; ctx.fillStyle = "#ff69b4";
-      ctx.fillText(battleNames[i + 7], col2_x + img_w + 60, rect.y + img_h / 2 + 8);
-      battleGame.chooseRects.push({ ...rect, idx: i + 7 });
+      ctx.fillText(battleNames[i + 8], col2_x + img_w + 60, rect.y + img_h / 2 + 8);
+      battleGame.chooseRects.push({ ...rect, idx: i + 8 });
     }
   } else if (battleGame.state === "vs" || battleGame.state === "fight") {
     drawBattleGrids();
@@ -2051,7 +2055,7 @@ function drawBattleGrids() {
     ctx.fillStyle = color;
     ctx.fillText(battleGame.resultText, WIDTH / 2, 580); // Position between grids and QUIT button
   }
-  if (battleGame.phase === "ready" && battleGame.round === 0) {
+  if (battleGame.phase === "ready") {
     battleButtons[1].draw();
   }
   if (battleGame.phase === "click") {
@@ -2107,6 +2111,7 @@ canvas.addEventListener("click", function (e) {
       gameState = "memory_menu";
     }
     else if (modeButtons[2].isInside(mx, my)) {
+      // Entering MONLUCK mode - pause background music
       let music = assets.sounds["music"];
       if (music) {
         music.pause();
@@ -2220,6 +2225,11 @@ canvas.addEventListener("click", function (e) {
         startMonluckGame();
         drawMonluckGame();
       } else if (menuButton.isInside(mx, my)) {
+        // Leaving MONLUCK mode - restore background music if sound is on
+        let music = assets.sounds["music"];
+        if (soundOn && music) {
+          music.play();
+        }
         gameState = "mode";
       }
     }
@@ -2228,6 +2238,11 @@ canvas.addEventListener("click", function (e) {
     if (!monluckGame.finished && !monluckGame.showSplash) {
       let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 60, 160, 48);
       if (quitButton.isInside(mx, my)) {
+        // Leaving MONLUCK mode - restore background music if sound is on
+        let music = assets.sounds["music"];
+        if (soundOn && music) {
+          music.play();
+        }
         gameState = "mode";
       }
     }
@@ -2418,39 +2433,52 @@ function handleMonluckTileClick(idx) {
   if (tile.revealed || monluckGame.finished) return;
 
   tile.revealed = true;
+  monluckGame.clicks++; // Increment click counter
+  
   let isMonad = monluckGame.monadIndices.includes(idx);
 
   if (isMonad) {
     // Found a monad - success!
     monluckGame.found.push(idx);
     let sfx = assets.sounds["yupi"];
-    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+    // MONLUCK sound effects always play regardless of mute setting
+    if (sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#00ff00"; // Green highlight
 
     // Award 1 point for each monad found
     monluckGame.score = monluckGame.found.length;
-
-    // Check if all 5 monads have been found
-    if (monluckGame.found.length >= 5) {
-      monluckGame.result = `YUPI! You found all ${monluckGame.found.length} monads!`;
-      monluckGame.finished = true;
-
-      // Show success message after a short delay
-      setTimeout(() => {
-        monluckGame.showSplash = true;
-        monluckGame.splashMsg = `Victory!\nScore: ${monluckGame.score}`;
-        drawMonluckGame();
-      }, 1100);
-    } else {
-      monluckGame.result = `Found ${monluckGame.found.length}/5 monads!`;
-    }
+    monluckGame.result = `Found ${monluckGame.found.length}/5 monads! (${monluckGame.clicks}/5 tries)`;
   } else {
-    // Wrong tile - highlight red but continue game
+    // Wrong tile - highlight red
     let sfx = assets.sounds["kuku"];
-    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+    // MONLUCK sound effects always play regardless of mute setting
+    if (sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#ff0000"; // Red highlight
+    monluckGame.result = `Found ${monluckGame.found.length}/5 monads! (${monluckGame.clicks}/5 tries)`;
+  }
 
-    // Game continues - player can keep trying
+  // Check if game should end (either all 5 monads found OR 5 tries used)
+  if (monluckGame.found.length >= 5) {
+    monluckGame.result = `YUPI! You found all ${monluckGame.found.length} monads in ${monluckGame.clicks} tries!`;
+    monluckGame.finished = true;
+
+    // Show success message after a short delay
+    setTimeout(() => {
+      monluckGame.showSplash = true;
+      monluckGame.splashMsg = `Victory!\nScore: ${monluckGame.score}`;
+      drawMonluckGame();
+    }, 1100);
+  } else if (monluckGame.clicks >= 5) {
+    // Game over - 5 tries used up
+    monluckGame.result = `Game Over! Found ${monluckGame.found.length}/5 monads in 5 tries. Score: ${monluckGame.score}`;
+    monluckGame.finished = true;
+
+    // Show game over message after a short delay
+    setTimeout(() => {
+      monluckGame.showSplash = true;
+      monluckGame.splashMsg = `Game Over!\nScore: ${monluckGame.score}`;
+      drawMonluckGame();
+    }, 1100);
   }
 }
 
@@ -2466,7 +2494,7 @@ function handleBattleClick(mx, my) {
     for (const rect of battleGame.chooseRects) {
       if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
         battleGame.player = rect.idx;
-        let pool = Array.from({ length: 13 }, (_, i) => i).filter(i => i !== rect.idx);
+        let pool = Array.from({ length: 16 }, (_, i) => i).filter(i => i !== rect.idx);
         battleGame.opponent = pool[Math.floor(Math.random() * pool.length)];
         battleGame.round = 0;
         battleGame.pscore = 0;
@@ -2478,9 +2506,9 @@ function handleBattleClick(mx, my) {
       }
     }
   } else if (battleGame.state === "vs") {
-    if (battleGame.phase === "ready" && battleGame.round === 0) {
+    if (battleGame.phase === "ready") {
       if (battleButtons[1].isInside(mx, my)) {
-        // Start with countdown for the first round
+        // Start with countdown for every round
         battleGame.phase = "countdown";
         battleGame.anim = performance.now() / 1000;
       }
