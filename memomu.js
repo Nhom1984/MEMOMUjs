@@ -211,6 +211,7 @@ let memomuGame = {
 // --- MONLUCK MODE DATA ---
 let monluckGame = {
   grid: [],
+  gridImages: [], // Array of image names for each tile
   monadIndices: [],
   found: [],
   clicks: 0,
@@ -1036,12 +1037,25 @@ function setupMemoryMemomuRound() {
 // --- MONLUCK LOGIC ---
 function startMonluckGame() {
   monluckGame.grid = createGrid(5, 6, 85, 10, 125);
-  let allIdx = Array.from({ length: 30 }, (_, i) => i);
-  monluckGame.monadIndices = [];
-  while (monluckGame.monadIndices.length < 5) {
-    let idx = allIdx[Math.floor(Math.random() * allIdx.length)];
-    if (!monluckGame.monadIndices.includes(idx)) monluckGame.monadIndices.push(idx);
+  
+  // Create an array of 30 random images where exactly one is the monad
+  monluckGame.gridImages = [];
+  
+  // Choose one random position for the monad
+  let monadPosition = Math.floor(Math.random() * 30);
+  monluckGame.monadIndices = [monadPosition];
+  
+  // Fill the grid with random images (1-30) and place monad at the chosen position
+  for (let i = 0; i < 30; i++) {
+    if (i === monadPosition) {
+      monluckGame.gridImages[i] = "monad"; // This will be the monad image
+    } else {
+      // Use random images from the available set
+      let randomImageIndex = Math.floor(Math.random() * 30) + 1;
+      monluckGame.gridImages[i] = "mmimg" + randomImageIndex;
+    }
   }
+  
   monluckGame.found = [];
   monluckGame.clicks = 0;
   monluckGame.finished = false;
@@ -1168,10 +1182,11 @@ function nextBattleRoundOrEnd() {
     battleGame.state = "end";
     battleGame.phase = "end";
   } else {
-    battleGame.phase = "countdown";
+    // Subsequent rounds start immediately after previous round's summary
+    battleGame.phase = "flash";
+    battleGame.flashing = true;
     battleGame.anim = performance.now() / 1000;
     prepareBattleRound();
-    battleGame.flashing = true;
     battleGame.resultText = "";
     battleGame.playerTime = null;
   }
@@ -1743,35 +1758,87 @@ function drawMonluckGame() {
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MONLUCK", WIDTH / 2, 90);
-  ctx.font = "22px Arial";
-  ctx.fillStyle = "#fff";
-  ctx.fillText("Clicks Left: " + (5 - monluckGame.clicks), WIDTH / 2, 135);
+  
+  // Don't show score counter during gameplay - only in game over overlay
+  
   monluckGame.grid.forEach((tile, i) => {
     ctx.save();
-    let img = assets.images["mmimg" + (i + 1)];
-    if (tile.revealed) {
-      ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
-      if (monluckGame.monadIndices.includes(i)) { ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 5; }
-      else { ctx.strokeStyle = "#262626"; ctx.lineWidth = 2; }
-    } else {
-      ctx.fillStyle = "#333";
-      ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
-      ctx.font = "32px Arial";
-      ctx.fillStyle = "#ffb6c1";
-      ctx.textAlign = "center";
-      ctx.fillText("?", tile.x + tile.size / 2, tile.y + tile.size / 2 + 11);
-      ctx.strokeStyle = "#262626"; ctx.lineWidth = 2;
+    let imgName = monluckGame.gridImages[i];
+    let img = assets.images[imgName];
+    
+    // Calculate row and column for MON LUCK text display
+    const cols = 6;
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    
+    // Display "MON LUCK" text on specific tiles
+    let displayText = "";
+    if (row === 1) { // Row 2 (0-indexed)
+      if (col === 1) displayText = "M"; // 2nd tile
+      else if (col === 2) displayText = "O"; // 3rd tile
+      else if (col === 3) displayText = "N"; // 4th tile
+    } else if (row === 2) { // Row 3 (0-indexed)
+      if (col === 2) displayText = "L"; // 3rd tile
+      else if (col === 3) displayText = "U"; // 4th tile
+      else if (col === 4) displayText = "C"; // 5th tile
+      else if (col === 5) displayText = "K"; // 6th tile
     }
+    
+    // Always show the actual image (no question marks)
+    if (img) {
+      ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
+    }
+    
+    // Apply highlight if tile was clicked
+    if (tile.revealed) {
+      if (monluckGame.monadIndices.includes(i)) { 
+        ctx.strokeStyle = "#00ff00"; // Green highlight for monad
+        ctx.lineWidth = 5; 
+      } else { 
+        ctx.strokeStyle = "#ff0000"; // Red highlight for non-monad
+        ctx.lineWidth = 5; 
+      }
+    } else {
+      ctx.strokeStyle = "#262626"; 
+      ctx.lineWidth = 2;
+    }
+    
+    // Draw MON LUCK text over the image if this tile should display it
+    if (displayText) {
+      ctx.font = "36px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 3;
+      ctx.textAlign = "center";
+      ctx.strokeText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2 + 12);
+      ctx.fillText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2 + 12);
+    }
+    
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
-  monluckButtons.forEach(b => b.draw());
-  ctx.font = "28px Arial";
-  ctx.fillStyle = "#fff";
-  ctx.fillText(monluckGame.result, WIDTH / 2, HEIGHT - 120);
-  ctx.font = "21px Arial";
-  ctx.fillStyle = "#ffb6c1";
-  ctx.fillText("Score: " + monluckGame.score, WIDTH / 2, HEIGHT - 80);
+  
+  // Only show QUIT button during gameplay, positioned centrally at bottom
+  if (!monluckGame.finished && !monluckGame.showSplash) {
+    let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 60, 160, 48);
+    quitButton.draw();
+  }
+  
+  // Show AGAIN and MENU buttons only when finished (on score table)
+  if (monluckGame.finished && !monluckGame.showSplash) {
+    let againButton = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 60, 160, 48);
+    let menuButton = new Button("MENU", WIDTH / 2 + 100, HEIGHT - 60, 160, 48);
+    againButton.draw();
+    menuButton.draw();
+  }
+  
+  // Only show score in the result text when game is finished
+  if (monluckGame.finished) {
+    ctx.font = "28px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(monluckGame.result, WIDTH / 2, HEIGHT - 120);
+  }
+  
   if (monluckGame.showSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1860,6 +1927,18 @@ function drawBattleGame() {
     let oimg = assets.images[`avatar${battleGame.opponent + 1}`];
     if (pimg) ctx.drawImage(pimg, 100, 60, img_sz, img_sz);
     if (oimg) ctx.drawImage(oimg, WIDTH - 230, 60, img_sz, img_sz);
+    
+    // Draw avatar names under their images
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    if (battleGame.player !== null) {
+      ctx.fillText(battleNames[battleGame.player], 100 + img_sz / 2, 60 + img_sz + 30);
+    }
+    if (battleGame.opponent !== null) {
+      ctx.fillText(battleNames[battleGame.opponent], WIDTH - 230 + img_sz / 2, 60 + img_sz + 30);
+    }
+    
     ctx.font = "52px Arial";
     ctx.fillStyle = "#ff69b4";
     ctx.fillText("VS", WIDTH / 2, 120);
@@ -1941,7 +2020,7 @@ function drawBattleGrids() {
     let color = battleGame.resultText.startsWith("YOU WIN") ? "#00ff00" :
       battleGame.resultText.startsWith("YOU LOSE") ? "#ff0000" : "#ffb6c1";
     ctx.fillStyle = color;
-    ctx.fillText(battleGame.resultText, WIDTH / 2, HEIGHT - 120);
+    ctx.fillText(battleGame.resultText, WIDTH / 2, 580); // Position between grids and QUIT button
   }
   if (battleGame.phase === "ready" && battleGame.round === 0) {
     battleButtons[1].draw();
@@ -1949,12 +2028,14 @@ function drawBattleGrids() {
   if (battleGame.phase === "click") {
     let left = Math.max(0, 15 - (performance.now() / 1000 - battleGame.anim));
     ctx.font = "24px Arial"; ctx.fillStyle = "#ff69b4";
-    ctx.fillText(`Time: ${Math.floor(left)}s`, WIDTH / 2, 520);
+    ctx.fillText(`Time: ${Math.floor(left)}s`, WIDTH / 2, 580); // Position between grids and QUIT button
   }
   if (battleGame.phase === "countdown") {
     let c = Math.max(0, 3 - Math.floor(performance.now() / 1000 - battleGame.anim));
-    ctx.font = "54px Arial"; ctx.fillStyle = "#ff69b4";
-    ctx.fillText(`${c}`, WIDTH / 2, 520);
+    if (c > 0) {
+      ctx.font = "54px Arial"; ctx.fillStyle = "#ff69b4";
+      ctx.fillText(`${c}`, WIDTH / 2, 580); // Position between grids and QUIT button
+    }
   }
 }
 
@@ -2102,10 +2183,28 @@ canvas.addEventListener("click", function (e) {
       }
     }
   } else if (gameState === "monluck") {
-    if (monluckButtons[0].isInside(mx, my)) { startMonluckGame(); drawMonluckGame(); }
-    else if (monluckButtons[1].isInside(mx, my)) { gameState = "mode"; }
-    else if (monluckButtons[2].isInside(mx, my)) { gameState = "menu"; }
-    if (!monluckGame.showSplash && !monluckGame.finished && monluckGame.clicks < 5) {
+    // Handle AGAIN and MENU buttons when game is finished
+    if (monluckGame.finished && !monluckGame.showSplash) {
+      let againButton = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 60, 160, 48);
+      let menuButton = new Button("MENU", WIDTH / 2 + 100, HEIGHT - 60, 160, 48);
+      if (againButton.isInside(mx, my)) { 
+        startMonluckGame(); 
+        drawMonluckGame(); 
+      } else if (menuButton.isInside(mx, my)) { 
+        gameState = "mode"; 
+      }
+    }
+    
+    // Handle QUIT button during gameplay
+    if (!monluckGame.finished && !monluckGame.showSplash) {
+      let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 60, 160, 48);
+      if (quitButton.isInside(mx, my)) { 
+        gameState = "mode"; 
+      }
+    }
+    
+    // Handle tile clicks for gameplay
+    if (!monluckGame.showSplash && !monluckGame.finished) {
       for (let i = 0; i < monluckGame.grid.length; i++) {
         let tile = monluckGame.grid[i];
         if (
@@ -2288,31 +2387,35 @@ function runMemoryMemomuFlashSequence() {
 function handleMonluckTileClick(idx) {
   let tile = monluckGame.grid[idx];
   if (tile.revealed || monluckGame.finished) return;
+  
   tile.revealed = true;
-  monluckGame.clicks++;
   let isMonad = monluckGame.monadIndices.includes(idx);
+  
   if (isMonad) {
+    // Found the monad - success!
     monluckGame.found.push(idx);
     let sfx = assets.sounds["yupi"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
-    tile.feedback = "#ffd700";
-  } else {
-    let sfx = assets.sounds["kuku"];
-    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
-    tile.feedback = "#ff0000";
-  }
-  if (monluckGame.clicks >= 5) {
-    let hits = monluckGame.found.length;
-    let mult = { 1: 2, 2: 5, 3: 40, 4: 500, 5: 1000 }[hits] || 0;
-    let score = Math.round(monluckGame.wager * mult);
-    monluckGame.score = score;
-    monluckGame.result = hits === 0 ? "GMOVER!" : `YUPI! Score: ${score} (Hits: ${hits})`;
+    tile.feedback = "#00ff00"; // Green highlight
+    
+    // Calculate score based on remaining clicks
+    monluckGame.score = 100; // Base score for finding the monad
+    monluckGame.result = "YUPI! You found the monad!";
     monluckGame.finished = true;
+    
+    // Show success message after a short delay
     setTimeout(() => {
       monluckGame.showSplash = true;
-      monluckGame.splashMsg = hits === 0 ? "Game Over!" : `Victory!\nScore: ${score}`;
+      monluckGame.splashMsg = `Victory!\nScore: ${monluckGame.score}`;
       drawMonluckGame();
     }, 1100);
+  } else {
+    // Wrong tile - highlight red
+    let sfx = assets.sounds["kuku"];
+    if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
+    tile.feedback = "#ff0000"; // Red highlight
+    
+    // Game continues - player can keep trying
   }
 }
 
@@ -2342,9 +2445,9 @@ function handleBattleClick(mx, my) {
   } else if (battleGame.state === "vs") {
     if (battleGame.phase === "ready" && battleGame.round === 0) {
       if (battleButtons[1].isInside(mx, my)) {
-        battleGame.flashing = true;
+        // Start with countdown for the first round
+        battleGame.phase = "countdown";
         battleGame.anim = performance.now() / 1000;
-        battleGame.phase = "flash";
       }
     } else if (battleGame.phase === "click") {
       handleBattleGridClick(mx, my);
@@ -2471,7 +2574,9 @@ function tickSplash() {
         nextBattleRoundOrEnd();
       }
       if (battleGame.phase === "countdown" && performance.now() / 1000 - battleGame.anim > 3) {
-        battleGame.phase = "ready";
+        battleGame.phase = "flash";
+        battleGame.flashing = true;
+        battleGame.anim = performance.now() / 1000;
         battleGame.clicks = [];
         battleGame.aiClicks = [];
       }
