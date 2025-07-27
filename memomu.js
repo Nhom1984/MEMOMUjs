@@ -230,8 +230,8 @@ let monluckGame = {
 
 // --- BATTLE MODE DATA ---
 const battleNames = [
-  "molandak", "moyaki", "lyraffe", "chog", "skrumpey", "spiky nad", "potato",
-  "mouch", "lazy", "retard", "bobr kurwa", "baba", "DAK", "warrior", "sage", "phantom", "rebel"
+  "Benja", "Berzan", "BillMonday", "Claw", "Dreiki", "Eunice", "Fin",
+  "Gleader", "James", "Keone", "KozaBobr", "LeysBobr", "MikeWeb", "Tunez", "Mondalf", "Saddamovic",
 ];
 let battleGame = {
   state: "rules", // rules, choose, vs, end
@@ -1926,7 +1926,7 @@ function drawBattleGame() {
     ctx.fillStyle = "#836EF9";
     ctx.textAlign = "center";
     ctx.fillText("Choose your fighter!", WIDTH / 2, 60);
-    let img_w = 80, img_h = 80, col1_x = WIDTH / 2 - 300, col2_x = WIDTH / 2 + 20, y_start = 90, y_gap = 44 + img_h / 2;
+    let img_w = 70, img_h = 70, col1_x = WIDTH / 2 - 300, col2_x = WIDTH / 2 + 20, y_start = 80, y_gap = 34 + img_h / 2;
     battleGame.chooseRects = [];
     // First column: 8 avatars (indices 0-7)
     for (let i = 0; i < 8; i++) {
@@ -2054,9 +2054,6 @@ function drawBattleGrids() {
       battleGame.resultText.startsWith("YOU LOSE") ? "#ff0000" : "#ffb6c1";
     ctx.fillStyle = color;
     ctx.fillText(battleGame.resultText, WIDTH / 2, 580); // Position between grids and QUIT button
-  }
-  if (battleGame.phase === "ready") {
-    battleButtons[1].draw();
   }
   if (battleGame.phase === "click") {
     let left = Math.max(0, 15 - (performance.now() / 1000 - battleGame.anim));
@@ -2434,7 +2431,7 @@ function handleMonluckTileClick(idx) {
 
   tile.revealed = true;
   monluckGame.clicks++; // Increment click counter
-  
+
   let isMonad = monluckGame.monadIndices.includes(idx);
 
   if (isMonad) {
@@ -2490,6 +2487,7 @@ function handleBattleClick(mx, my) {
     }
     return;
   }
+
   if (battleGame.state === "choose") {
     for (const rect of battleGame.chooseRects) {
       if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
@@ -2500,19 +2498,17 @@ function handleBattleClick(mx, my) {
         battleGame.pscore = 0;
         battleGame.oscore = 0;
         battleGame.state = "vs";
-        battleGame.phase = "ready";
-        prepareBattleRound();
+        battleGame.phase = "countdown"; // <-- Start with countdown
+        battleGame.anim = performance.now() / 1000; // <-- Set timer
+        // DO NOT call prepareBattleRound() yet!
         return;
       }
     }
-  } else if (battleGame.state === "vs") {
-    if (battleGame.phase === "ready") {
-      if (battleButtons[1].isInside(mx, my)) {
-        // Start with countdown for every round
-        battleGame.phase = "countdown";
-        battleGame.anim = performance.now() / 1000;
-      }
-    } else if (battleGame.phase === "click") {
+    return;
+  }
+
+  if (battleGame.state === "vs") {
+    if (battleGame.phase === "click") {
       handleBattleGridClick(mx, my);
     }
     if (battleButtons[3].isInside(mx, my)) {
@@ -2529,40 +2525,17 @@ function handleBattleClick(mx, my) {
         battleGame.phase = "end";
       }
     }
-  } else if (battleGame.state === "end") {
+    return;
+  }
+
+  if (battleGame.state === "end") {
     if (battleButtons[2].isInside(mx, my)) {
       resetBattleGame();
       gameState = "mode";
     }
+    return;
   }
 }
-function handleBattleGridClick(mx, my) {
-  let gx = 120, gy = 260, cell_sz = 56;
-  for (let i = 0; i < 16; i++) {
-    let x = gx + (i % 4) * cell_sz * 1.2;
-    let y = gy + Math.floor(i / 4) * cell_sz * 1.2;
-    if (mx >= x && mx <= x + cell_sz && my >= y && my <= y + cell_sz && !battleGame.clicks.includes(i)) {
-      if (battleGame.clicks.length < battleGame.avatarsThisRound) {
-        battleGame.clicks.push(i);
-        if (!battleGame.targets.includes(i)) {
-          battleGame.phase = "result";
-          battleGame.playerTime = performance.now() / 1000 - battleGame.anim;
-          battleGame.resultText = makeBattleResultText(true);
-          battleGame.anim = performance.now() / 1000;
-          return;
-        }
-        if (sorted(battleGame.clicks) == sorted(battleGame.targets)) {
-          battleGame.playerTime = performance.now() / 1000 - battleGame.anim;
-          battleGame.phase = "result";
-          battleGame.resultText = makeBattleResultText(false);
-          battleGame.anim = performance.now() / 1000;
-          return;
-        }
-      }
-    }
-  }
-}
-
 function nextMusicMemRound() {
   if (musicMem.currentRound < musicMem.maxRounds) {
     musicMem.currentRound++;
@@ -2636,8 +2609,8 @@ function tickSplash() {
       if (battleGame.phase === "result" && performance.now() / 1000 - battleGame.anim > 1.6) {
         nextBattleRoundOrEnd();
       }
-      if (battleGame.phase === "countdown" && performance.now() / 1000 - battleGame.anim > 3) {
-        battleGame.phase = "flash";
+      if (battleGame.phase === "countdown" && battleGame.round === 0 && performance.now() / 1000 - battleGame.anim > 3) {
+        prepareBattleRound(); // sets up grid, targets, and sets phase to "flash"
         battleGame.flashing = true;
         battleGame.anim = performance.now() / 1000;
         battleGame.clicks = [];
