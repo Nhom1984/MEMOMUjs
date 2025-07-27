@@ -518,10 +518,10 @@ function setupButtons() {
   monluckButtons = [
     new Button("AGAIN", WIDTH / 2 - 190, HEIGHT - 60, 160, 48),
     new Button("MENU", WIDTH / 2, HEIGHT - 60, 160, 48),
-    new Button("QUIT", WIDTH / 2 + 190, HEIGHT - 60, 160, 48)
+    new Button("QUIT", WIDTH / 2 + 190, HEIGHT - 10, 160, 48)
   ];
   battleButtons = [
-    new Button("GOT IT", WIDTH / 2, 520, 170, 60),
+    new Button("GOT IT", WIDTH / 2, 600, 170, 60),
     new Button("GO!", WIDTH / 2, 610, 170, 60),
     new Button("BACK", WIDTH / 2, 400, 170, 60),
     new Button("QUIT", WIDTH / 2, 650, 170, 45),
@@ -1037,20 +1037,20 @@ function setupMemoryMemomuRound() {
 // --- MONLUCK LOGIC ---
 function startMonluckGame() {
   monluckGame.grid = createGrid(5, 6, 85, 10, 125);
-  
+
   // Initialize all tiles as not revealed
   monluckGame.grid.forEach(tile => {
     tile.revealed = false;
   });
-  
+
   // Create an array of 30 images: 5 monad.png and 25 random images from image1-image33
   monluckGame.gridImages = [];
-  
+
   // Choose 5 random positions for the monads
-  let allPositions = Array.from({length: 30}, (_, i) => i);
+  let allPositions = Array.from({ length: 30 }, (_, i) => i);
   let shuffledPositions = fisherYatesShuffle(allPositions);
   monluckGame.monadIndices = shuffledPositions.slice(0, 5);
-  
+
   // Fill the grid with images
   for (let i = 0; i < 30; i++) {
     if (monluckGame.monadIndices.includes(i)) {
@@ -1061,7 +1061,7 @@ function startMonluckGame() {
       monluckGame.gridImages[i] = "classicimg" + randomImageIndex;
     }
   }
-  
+
   monluckGame.found = [];
   monluckGame.clicks = 0;
   monluckGame.finished = false;
@@ -1207,7 +1207,7 @@ function drawMenu() {
   ctx.font = "48px Arial";
   ctx.textAlign = "center";
   menuButtons.forEach(b => b.draw());
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1220,7 +1220,7 @@ function drawModeMenu() {
   ctx.font = "44px Arial";
   ctx.textAlign = "center";
   modeButtons.forEach(b => b.draw());
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1232,7 +1232,7 @@ function drawMemoryMenu() {
   ctx.textAlign = "center";
   ctx.fillText("Choose Memory Mode", WIDTH / 2, 140);
   memoryMenuButtons.forEach(b => b.draw());
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1300,7 +1300,7 @@ function drawMusicMemoryRules() {
   musicMemRulesButtons.forEach(b => b.draw());
 
   // Copyright
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1424,7 +1424,7 @@ function drawMusicMemory() {
   }
 
   // Copyright
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1514,7 +1514,7 @@ function drawMemomuMemoryRules() {
 
   memoryMemomuRulesButtons.forEach(b => b.draw());
 
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1750,7 +1750,7 @@ function drawMemoryGameMemomu() {
   }
 
   // Copyright
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1764,19 +1764,19 @@ function drawMonluckGame() {
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MONLUCK", WIDTH / 2, 90);
-  
+
   // Don't show score counter during gameplay - only in game over overlay
-  
+
   monluckGame.grid.forEach((tile, i) => {
     ctx.save();
     let imgName = monluckGame.gridImages[i];
     let img = assets.images[imgName];
-    
+
     // Calculate row and column for MON LUCK text display
     const cols = 6;
     const row = Math.floor(i / cols);
     const col = i % cols;
-    
+
     // Display "MON LUCK" text on specific tiles
     let displayText = "";
     if (row === 1) { // Row 2 (0-indexed)
@@ -1789,7 +1789,7 @@ function drawMonluckGame() {
       else if (col === 4) displayText = "C"; // 5th tile
       else if (col === 5) displayText = "K"; // 6th tile
     }
-    
+
     // Only show the image if the tile has been revealed (clicked)
     if (tile.revealed && img) {
       ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
@@ -1798,27 +1798,27 @@ function drawMonluckGame() {
       ctx.fillStyle = "#333";
       ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
     }
-    
+
     // Apply highlight if tile was clicked
     if (tile.revealed) {
-      if (monluckGame.monadIndices.includes(i)) { 
+      if (monluckGame.monadIndices.includes(i)) {
         ctx.strokeStyle = "#00ff00"; // Green highlight for monad
-        ctx.lineWidth = 5; 
-      } else { 
+        ctx.lineWidth = 5;
+      } else {
         ctx.strokeStyle = "#ff0000"; // Red highlight for non-monad
-        ctx.lineWidth = 5; 
+        ctx.lineWidth = 5;
       }
     } else {
-      ctx.strokeStyle = "#262626"; 
+      ctx.strokeStyle = "#262626";
       ctx.lineWidth = 2;
     }
-    
+
     // Draw MON LUCK text over the tile if this tile should display it AND the tile hasn't been revealed
     if (displayText && !tile.revealed) {
       // Fill entire tile background for letters
       ctx.fillStyle = "#333";
       ctx.fillRect(tile.x, tile.y, tile.size, tile.size);
-      
+
       // Make letters large and fill the tile using color #836EF9
       ctx.font = "48px Arial";
       ctx.fillStyle = "#836EF9";
@@ -1831,25 +1831,25 @@ function drawMonluckGame() {
       // Draw filled text
       ctx.fillText(displayText, tile.x + tile.size / 2, tile.y + tile.size / 2);
     }
-    
+
     ctx.strokeRect(tile.x, tile.y, tile.size, tile.size);
     ctx.restore();
   });
-  
+
   // Show progress during gameplay
   if (!monluckGame.finished && !monluckGame.showSplash) {
     ctx.font = "24px Arial";
     ctx.fillStyle = "#836EF9";
     ctx.textAlign = "center";
-    ctx.fillText(`Found: ${monluckGame.found.length}/5 monads`, WIDTH / 2, HEIGHT - 120);
+    ctx.fillText(`Found: ${monluckGame.found.length}/5 monads`, WIDTH / 2, HEIGHT - 80);
   }
-  
+
   // Only show QUIT button during gameplay, positioned centrally at bottom
   if (!monluckGame.finished && !monluckGame.showSplash) {
-    let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 60, 160, 48);
+    let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 48, 160, 48);
     quitButton.draw();
   }
-  
+
   // Show AGAIN and MENU buttons only when finished (on score table)
   if (monluckGame.finished && !monluckGame.showSplash) {
     let againButton = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 60, 160, 48);
@@ -1857,14 +1857,14 @@ function drawMonluckGame() {
     againButton.draw();
     menuButton.draw();
   }
-  
+
   // Only show score in the result text when game is finished
   if (monluckGame.finished) {
     ctx.font = "28px Arial";
     ctx.fillStyle = "#fff";
     ctx.fillText(monluckGame.result, WIDTH / 2, HEIGHT - 120);
   }
-  
+
   if (monluckGame.showSplash) {
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1876,7 +1876,7 @@ function drawMonluckGame() {
     ctx.fillText(monluckGame.splashMsg, WIDTH / 2, HEIGHT / 2);
     ctx.restore();
   }
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -1896,19 +1896,21 @@ function drawBattleGame() {
     ctx.roundRect(WIDTH / 2 - 340, HEIGHT / 2 - 220, 680, 380, 24);
     ctx.fill();
     ctx.stroke();
-    ctx.font = "48px Arial";
-    ctx.fillStyle = "#222";
+    ctx.textAlign = "center";
+    ctx.font = "38px Arial";
+    ctx.fillStyle = "#836EF9";
     ctx.fillText("BATTLE MODE RULES:", WIDTH / 2, HEIGHT / 2 - 180);
     ctx.font = "24px Arial";
     ctx.fillStyle = "#222";
     const rules = [
-      "- Each round: 4x4 grid for you and opponent.",
-      "- Your avatar appears 1-5 times per grid (both always equal).",
-      "- Rounds 1-2: Only avatars shown, rest are blank.",
-      "- Rounds 3-5: All tiles filled (images + avatars).",
-      "- Click all your avatars, but one mistake ends your round!",
-      "- Each avatar found: +1pt. If you find all avatars and are faster: +1pt bonus.",
-      "- Win round (more avatars, or all + speed): +1pt bonus.",
+      "- Each round both players see their avatars flash on grids",
+      "- Find them all before another player - click right tiles",
+      "- One mistake ends your round!",
+      "",
+      "Scoring:",
+      "- Each avatar found you get +1pt",
+      "- If you find all avatars and are faster you get +1pt bonus.",
+      "- Win round (more avatars found, or all + speed): +1pt bonus",
       "- Total score after 5 rounds wins!",
     ];
     for (let i = 0; i < rules.length; i++) {
@@ -1919,9 +1921,10 @@ function drawBattleGame() {
     ctx.fillStyle = "#222";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     ctx.font = "42px Arial";
-    ctx.fillStyle = "#ffb6c1";
+    ctx.fillStyle = "#836EF9";
+    ctx.textAlign = "center";
     ctx.fillText("Choose your fighter!", WIDTH / 2, 60);
-    let img_w = 60, img_h = 60, col1_x = WIDTH / 2 - 180, col2_x = WIDTH / 2 + 40, y_start = 90, y_gap = 44 + img_h / 2;
+    let img_w = 80, img_h = 80, col1_x = WIDTH / 2 - 300, col2_x = WIDTH / 2 + 20, y_start = 90, y_gap = 44 + img_h / 2;
     battleGame.chooseRects = [];
     for (let i = 0; i < 7; i++) {
       let img = assets.images[`avatar${i + 1}`];
@@ -1930,7 +1933,7 @@ function drawBattleGame() {
       ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
       ctx.font = "24px Arial"; ctx.fillStyle = "#ff69b4";
-      ctx.fillText(battleNames[i], col1_x + img_w + 20, rect.y + img_h / 2 + 8);
+      ctx.fillText(battleNames[i], col1_x + img_w + 60, rect.y + img_h / 2 + 8);
       battleGame.chooseRects.push({ ...rect, idx: i });
     }
     for (let i = 0; i < 6; i++) {
@@ -1940,7 +1943,7 @@ function drawBattleGame() {
       ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
       ctx.font = "24px Arial"; ctx.fillStyle = "#ff69b4";
-      ctx.fillText(battleNames[i + 7], col2_x + img_w + 20, rect.y + img_h / 2 + 8);
+      ctx.fillText(battleNames[i + 7], col2_x + img_w + 60, rect.y + img_h / 2 + 8);
       battleGame.chooseRects.push({ ...rect, idx: i + 7 });
     }
   } else if (battleGame.state === "vs" || battleGame.state === "fight") {
@@ -1953,7 +1956,7 @@ function drawBattleGame() {
     let oimg = assets.images[`avatar${battleGame.opponent + 1}`];
     if (pimg) ctx.drawImage(pimg, 100, 60, img_sz, img_sz);
     if (oimg) ctx.drawImage(oimg, WIDTH - 230, 60, img_sz, img_sz);
-    
+
     // Draw avatar names under their images
     ctx.font = "24px Arial";
     ctx.fillStyle = "#fff";
@@ -1964,7 +1967,7 @@ function drawBattleGame() {
     if (battleGame.opponent !== null) {
       ctx.fillText(battleNames[battleGame.opponent], WIDTH - 230 + img_sz / 2, 60 + img_sz + 30);
     }
-    
+
     ctx.font = "52px Arial";
     ctx.fillStyle = "#ff69b4";
     ctx.fillText("VS", WIDTH / 2, 120);
@@ -1976,7 +1979,7 @@ function drawBattleGame() {
     ctx.fillText(msg, WIDTH / 2, 300);
     battleButtons[2].draw();
   }
-  ctx.font = "20px Arial";
+  ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
@@ -2213,22 +2216,22 @@ canvas.addEventListener("click", function (e) {
     if (monluckGame.finished && !monluckGame.showSplash) {
       let againButton = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 60, 160, 48);
       let menuButton = new Button("MENU", WIDTH / 2 + 100, HEIGHT - 60, 160, 48);
-      if (againButton.isInside(mx, my)) { 
-        startMonluckGame(); 
-        drawMonluckGame(); 
-      } else if (menuButton.isInside(mx, my)) { 
-        gameState = "mode"; 
+      if (againButton.isInside(mx, my)) {
+        startMonluckGame();
+        drawMonluckGame();
+      } else if (menuButton.isInside(mx, my)) {
+        gameState = "mode";
       }
     }
-    
+
     // Handle QUIT button during gameplay
     if (!monluckGame.finished && !monluckGame.showSplash) {
       let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 60, 160, 48);
-      if (quitButton.isInside(mx, my)) { 
-        gameState = "mode"; 
+      if (quitButton.isInside(mx, my)) {
+        gameState = "mode";
       }
     }
-    
+
     // Handle tile clicks for gameplay
     if (!monluckGame.showSplash && !monluckGame.finished) {
       for (let i = 0; i < monluckGame.grid.length; i++) {
@@ -2413,25 +2416,25 @@ function runMemoryMemomuFlashSequence() {
 function handleMonluckTileClick(idx) {
   let tile = monluckGame.grid[idx];
   if (tile.revealed || monluckGame.finished) return;
-  
+
   tile.revealed = true;
   let isMonad = monluckGame.monadIndices.includes(idx);
-  
+
   if (isMonad) {
     // Found a monad - success!
     monluckGame.found.push(idx);
     let sfx = assets.sounds["yupi"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#00ff00"; // Green highlight
-    
+
     // Award 1 point for each monad found
     monluckGame.score = monluckGame.found.length;
-    
+
     // Check if all 5 monads have been found
     if (monluckGame.found.length >= 5) {
       monluckGame.result = `YUPI! You found all ${monluckGame.found.length} monads!`;
       monluckGame.finished = true;
-      
+
       // Show success message after a short delay
       setTimeout(() => {
         monluckGame.showSplash = true;
@@ -2446,7 +2449,7 @@ function handleMonluckTileClick(idx) {
     let sfx = assets.sounds["kuku"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#ff0000"; // Red highlight
-    
+
     // Game continues - player can keep trying
   }
 }
