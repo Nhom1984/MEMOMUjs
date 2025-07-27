@@ -1192,10 +1192,8 @@ function nextBattleRoundOrEnd() {
     battleGame.state = "end";
     battleGame.phase = "end";
   } else {
-    // Subsequent rounds start immediately after previous round's summary
-    battleGame.phase = "flash";
-    battleGame.flashing = true;
-    battleGame.anim = performance.now() / 1000;
+    // Subsequent rounds should go to ready state to show countdown
+    battleGame.phase = "ready";
     prepareBattleRound();
     battleGame.resultText = "";
     battleGame.playerTime = null;
@@ -2057,7 +2055,7 @@ function drawBattleGrids() {
     ctx.fillStyle = color;
     ctx.fillText(battleGame.resultText, WIDTH / 2, 580); // Position between grids and QUIT button
   }
-  if (battleGame.phase === "ready" && battleGame.round === 0) {
+  if (battleGame.phase === "ready") {
     battleButtons[1].draw();
   }
   if (battleGame.phase === "click") {
@@ -2508,9 +2506,9 @@ function handleBattleClick(mx, my) {
       }
     }
   } else if (battleGame.state === "vs") {
-    if (battleGame.phase === "ready" && battleGame.round === 0) {
+    if (battleGame.phase === "ready") {
       if (battleButtons[1].isInside(mx, my)) {
-        // Start with countdown for the first round
+        // Start with countdown for every round
         battleGame.phase = "countdown";
         battleGame.anim = performance.now() / 1000;
       }
