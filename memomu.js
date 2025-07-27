@@ -1206,7 +1206,7 @@ function drawModeMenu() {
 }
 function drawMemoryMenu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "44px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Choose Memory Mode", WIDTH / 2, 140);
@@ -1224,7 +1224,7 @@ function drawMusicMemoryRules() {
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   // Title
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "44px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Music Memory Rules", WIDTH / 2, 60);
@@ -1421,7 +1421,7 @@ function drawMemoryClassicRules() {
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   // Rules table
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Classic Memory Rules", WIDTH / 2, 100);
@@ -1525,7 +1525,7 @@ function drawMemoryGameClassic() {
   ctx.fillText(`Time: ${Math.ceil(memoryGame.timeRemaining)}s`, 20, 100);
 
   // Reset color for title
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Classic Memory", WIDTH / 2, 50);
@@ -1603,7 +1603,7 @@ function drawMemoryGameClassic() {
 // Draw score table for Memomu game
 function drawMemomuScoreTable() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "36px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MEMOMU Memory - Final Score", WIDTH / 2, 60);
@@ -1630,7 +1630,7 @@ function drawMemoryGameMemomu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   // Title
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MEMOMU Memory", WIDTH / 2, 90);
@@ -1739,7 +1739,7 @@ function drawMemoryGameMemomu() {
 }
 function drawMonluckGame() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = "#ff69b4";
+  ctx.fillStyle = "#836EF9";
   ctx.font = "40px Arial";
   ctx.textAlign = "center";
   ctx.fillText("MONLUCK", WIDTH / 2, 90);
