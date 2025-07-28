@@ -352,8 +352,11 @@ function addHighScore(mode, score, name = null) {
 }
 
 function isTopTenScore(mode, score) {
-  if (!highScores[mode]) return true;
+  // Always prompt if leaderboard is empty or doesn't exist
+  if (!highScores[mode] || highScores[mode].length === 0) return true;
+  // Always prompt if leaderboard has less than 10 entries
   if (highScores[mode].length < 10) return true;
+  // Prompt if score is better than 10th place
   return score > highScores[mode][9].score;
 }
 
@@ -702,9 +705,9 @@ function setupButtons() {
     new Button("QUIT", WIDTH / 2, HEIGHT - 45, 120, 48)
   ];
   memoryMemomuScoreButtons = [
-    new Button("AGAIN", WIDTH / 2 - 90, HEIGHT - 70, 150, 48),
-    new Button("MENU", WIDTH / 2 + 90, HEIGHT - 70, 150, 48),
-    new Button("QUIT", WIDTH / 2, HEIGHT - 20, 130, 40)
+    new Button("PLAY AGAIN", WIDTH / 2 - 110, HEIGHT - 100, 200, 50),
+    new Button("MAIN MENU", WIDTH / 2 + 110, HEIGHT - 100, 200, 50),
+    new Button("QUIT", WIDTH / 2, HEIGHT - 40, 150, 40)
   ];
   monluckButtons = [
     new Button("AGAIN", WIDTH / 2 - 190, HEIGHT - 60, 160, 48),
@@ -1511,15 +1514,30 @@ function drawMusicMemory() {
   ctx.fillStyle = "#fff";
   ctx.fillText("Round " + musicMem.currentRound + " / " + musicMem.maxRounds, WIDTH / 10, 70);
 
-  // Phase indicator
+  // Phase indicator with instructions
   let phaseText = "";
-  if (musicMem.phase === "memory") phaseText = "MEMORY PHASE";
-  else if (musicMem.phase === "deception") phaseText = "DECEPTION PHASE";
-  else if (musicMem.phase === "guessing") phaseText = "GUESSING PHASE";
+  let phaseInstruction = "";
+  if (musicMem.phase === "memory") {
+    phaseText = "MEMORY PHASE";
+    phaseInstruction = "Watch and listen to the sequence";
+  } else if (musicMem.phase === "deception") {
+    phaseText = "DECEPTION PHASE";
+    phaseInstruction = "This sequence might be different!";
+  } else if (musicMem.phase === "guessing") {
+    phaseText = "GUESSING PHASE";
+    phaseInstruction = "Click the tiles in the correct order";
+  }
 
   ctx.font = "24px Arial";
   ctx.fillStyle = "#ffb6c1";
-  ctx.fillText(phaseText, WIDTH - 150, 70);
+  ctx.fillText(phaseText, WIDTH - 200, 70);
+  
+  // Phase instruction
+  if (phaseInstruction) {
+    ctx.font = "18px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(phaseInstruction, WIDTH / 2, 100);
+  }
 
   // Timer for guessing phase
   if (musicMem.phase === "guessing" && musicMem.allowInput) {
@@ -1590,32 +1608,7 @@ function drawMusicMemory() {
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText("Score: " + musicMem.score, WIDTH / 11, HEIGHT - 600);
 
-  // Phase message overlay
-  if (musicMem.showPhaseMessage) {
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.globalAlpha = 1;
-    ctx.font = "36px Arial";
-    ctx.fillStyle = "#ff69b4";
-    ctx.textAlign = "center";
-    ctx.fillText(musicMem.phaseMessage, WIDTH / 2, HEIGHT / 2);
-    ctx.restore();
-  }
-
-  // Round splash
-  if (musicMem.showRoundSplash) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.font = "54px Arial";
-    ctx.fillStyle = "#ff69b4";
-    ctx.textAlign = "center";
-    ctx.fillText(musicMem.splashMsg, WIDTH / 2, HEIGHT / 2);
-    ctx.restore();
-  }
+  // Phase messages are now displayed above the grid (lines 1514-1522) instead of as overlays
 
   // Copyright
   ctx.font = "16px Arial";
@@ -2210,12 +2203,16 @@ function drawBattleGrids() {
     ctx.fill();
     ctx.stroke();
     let v = battleGame.grid[i];
-    if (battleGame.flashing && v !== null) {
+    // Show image when flashing OR when clicked
+    if ((battleGame.flashing && v !== null) || battleGame.clicks.includes(i)) {
       let img = v;
       if (img) ctx.drawImage(img, x + 4, y + 4, grid_img_sz, grid_img_sz);
     }
+    // Show colored border for clicked tiles
     if (battleGame.phase === "click" && battleGame.clicks.includes(i)) {
-      ctx.strokeStyle = "#00ff00"; ctx.lineWidth = 4;
+      // Green for correct tiles, red for incorrect tiles
+      ctx.strokeStyle = battleGame.targets.includes(i) ? "#00ff00" : "#ff0000";
+      ctx.lineWidth = 4;
       ctx.strokeRect(x + 2, y + 2, cell_sz - 4, cell_sz - 4);
     }
     ctx.restore();
@@ -2456,8 +2453,9 @@ canvas.addEventListener("click", function (e) {
     }
   } else if (gameState === "memory_memomu_score") {
     if (memoryMemomuScoreButtons[0].isInside(mx, my)) {
-      gameState = "memory_memomu";
-      memomuGame.showGo = true;
+      // Play Again - restart the MEMOMU Memory game
+      startMemoryGameMemomu();
+      gameState = "memory_memomu_rules";
     }
     else if (memoryMemomuScoreButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
     else if (memoryMemomuScoreButtons[2].isInside(mx, my)) { gameState = "menu"; }
