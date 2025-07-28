@@ -1183,7 +1183,7 @@ function processBattleResult() {
     battleGame.resultText = makeBattleResultText(sorted(battleGame.clicks) != sorted(battleGame.targets));
   }
   battleGame.phase = "result";
-  battleGame.anim = performance.now() / 1000;
+  battleGame.anim = performance.now() / 700;
   battleGame.aiResult = null;
 }
 function nextBattleRoundOrEnd() {
@@ -2049,15 +2049,17 @@ function drawBattleGrids() {
   }
   battleButtons[3].draw();
   if (battleGame.phase === "result") {
-    ctx.font = "34px Arial";
+    ctx.font = "22px Arial";
     let color = battleGame.resultText.startsWith("YOU WIN") ? "#00ff00" :
       battleGame.resultText.startsWith("YOU LOSE") ? "#ff0000" : "#ffb6c1";
     ctx.fillStyle = color;
+    ctx.textAlign = "center";
     ctx.fillText(battleGame.resultText, WIDTH / 2, 580); // Position between grids and QUIT button
   }
   if (battleGame.phase === "click") {
     let left = Math.max(0, 15 - (performance.now() / 1000 - battleGame.anim));
     ctx.font = "24px Arial"; ctx.fillStyle = "#ff69b4";
+    ctx.textAlign = "center";
     ctx.fillText(`Time: ${Math.floor(left)}s`, WIDTH / 2, 580); // Position between grids and QUIT button
   }
   if (battleGame.phase === "countdown") {
@@ -2072,8 +2074,8 @@ function drawBattleGrids() {
 // --- CLICK HANDLING ---
 canvas.addEventListener("click", function (e) {
   let rect = canvas.getBoundingClientRect();
-  let mx = e.clientX - rect.left;
-  let my = e.clientY - rect.top;
+  let mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  let my = (e.clientY - rect.top) * (canvas.height / rect.height);
 
   // Check game over overlay first - blocks all other interactions
   if (handleGameOverOverlayClick(mx, my)) {
@@ -2481,6 +2483,7 @@ function handleMonluckTileClick(idx) {
 
 // --- BATTLE CLICK HANDLING ---
 function handleBattleClick(mx, my) {
+  console.log("BattleClick", battleGame.state, battleGame.phase);
   if (battleGame.state === "rules") {
     if (battleButtons[0].isInside(mx, my)) {
       battleGame.state = "choose";
@@ -2505,6 +2508,25 @@ function handleBattleClick(mx, my) {
       }
     }
     return;
+  }
+  function handleBattleGridClick(mx, my) {
+    let gx = 120, gy = 260, cell_sz = 56, spacing = cell_sz * 1.2;
+    for (let i = 0; i < 16; i++) {
+      let x = gx + (i % 4) * spacing;
+      let y = gy + Math.floor(i / 4) * spacing;
+      if (
+        mx >= x && mx <= x + cell_sz &&
+        my >= y && my <= y + cell_sz
+      ) {
+        // Only allow if not already clicked and only during the click phase
+        if (!battleGame.clicks.includes(i) && battleGame.phase === "click") {
+          battleGame.clicks.push(i);
+          // Your additional game logic can go here (e.g., check win/loss, etc)
+          drawBattleGame(); // Redraw to show the click
+        }
+        break;
+      }
+    }
   }
 
   if (battleGame.state === "vs") {
@@ -2606,7 +2628,7 @@ function tickSplash() {
           processBattleResult();
         }
       }
-      if (battleGame.phase === "result" && performance.now() / 1000 - battleGame.anim > 1.6) {
+      if (battleGame.phase === "result" && performance.now() / 700 - battleGame.anim > 1.6) {
         nextBattleRoundOrEnd();
       }
       if (battleGame.phase === "countdown" && battleGame.round === 0 && performance.now() / 1000 - battleGame.anim > 3) {
