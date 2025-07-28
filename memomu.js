@@ -81,11 +81,9 @@ class Button {
     if (!this.img) {
       ctx.strokeStyle = "#ff69b4";
       ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.roundRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h, 16);
       ctx.fillStyle = "#ffb6c1";
-      ctx.fill();
-      ctx.stroke();
+      ctx.fillRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
+      ctx.strokeRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
       ctx.fillStyle = "#222";
       ctx.font = "32px Arial";
       ctx.textAlign = "center";
@@ -433,10 +431,8 @@ function drawGameOverOverlay() {
   ctx.fillStyle = "#ffb6c1";
   ctx.strokeStyle = "#ff1493";
   ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.roundRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300, 20);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fillRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300);
+  ctx.strokeRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300);
 
   // Game Over text
   ctx.font = "48px Arial";
@@ -497,10 +493,8 @@ function drawNameInput() {
   ctx.fillStyle = "#ffb6c1";
   ctx.strokeStyle = "#ff1493";
   ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.roundRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300, 20);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fillRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300);
+  ctx.strokeRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300);
 
   // Title text
   ctx.font = "36px Arial";
@@ -521,10 +515,8 @@ function drawNameInput() {
   ctx.fillStyle = "#fff";
   ctx.strokeStyle = "#ff1493";
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(WIDTH / 2 - 120, HEIGHT / 2 + 10, 240, 40, 8);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fillRect(WIDTH / 2 - 120, HEIGHT / 2 + 10, 240, 40);
+  ctx.strokeRect(WIDTH / 2 - 120, HEIGHT / 2 + 10, 240, 40);
 
   // Current name text
   ctx.font = "18px Arial";
@@ -568,10 +560,8 @@ function drawLeaderboard() {
     ctx.fillStyle = isActive ? "#ff69b4" : "#ffc0cb";
     ctx.strokeStyle = "#ff1493";
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(x, tabY, tabWidth, tabHeight, 8);
-    ctx.fill();
-    ctx.stroke();
+    ctx.fillRect(x, tabY, tabWidth, tabHeight);
+    ctx.strokeRect(x, tabY, tabWidth, tabHeight);
 
     // Tab text
     ctx.font = "18px Arial";
