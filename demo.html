@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEMOMU Leaderboard Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .demo-section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        .button { background: #ffb6c1; border: 3px solid #ff69b4; padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .tab { background: #ffc0cb; border: 2px solid #ff1493; padding: 5px 15px; margin: 2px; cursor: pointer; }
+        .tab.active { background: #ff69b4; color: white; }
+        .leaderboard { background: #f9f9f9; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>MEMOMU Leaderboard System Demo</h1>
+    
+    <div class="demo-section">
+        <h2>1. Main Menu Buttons</h2>
+        <div class="button">NEW GAME</div>
+        <div class="button" style="background: #90EE90;">LEADERBOARD</div>
+        <div class="button">QUIT</div>
+        <p>✅ LEADERBOARD button added between NEW GAME and QUIT</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>2. Name Input Dialog (appears when achieving top 10 score)</h2>
+        <div style="background: rgba(0,0,0,0.7); padding: 20px; color: white; text-align: center;">
+            <div style="background: #ffb6c1; color: black; padding: 20px; display: inline-block;">
+                <h3>🏆 TOP 10 SCORE! 🏆</h3>
+                <p>Score: 1250</p>
+                <p>Enter your name:</p>
+                <input type="text" maxlength="12" placeholder="Your name here" style="padding: 5px;">
+                <br><br>
+                <small>Press ENTER to submit or ESC to skip</small>
+            </div>
+        </div>
+        <p>✅ Name input appears for top 10 scores in Music/Classic/Memomu modes only</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>3. Leaderboard Page with Tabs</h2>
+        <h3 style="color: #836EF9;">LEADERBOARD</h3>
+        
+        <div>
+            <span class="tab active">MUSIC</span>
+            <span class="tab">CLASSIC</span>
+            <span class="tab">MEMOMU</span>
+        </div>
+        
+        <div class="leaderboard">
+            <p><strong>Rank    Name    Score</strong></p>
+            <p style="color: #ffd700;">1.    Alice    1000</p>
+            <p style="color: #c0c0c0;">2.    Bob      950</p>
+            <p style="color: #cd7f32;">3.    Charlie  900</p>
+            <p>4.    David    850</p>
+            <p>5.    Eve      800</p>
+            <p>6.    Frank    750</p>
+            <p>7.    Grace    700</p>
+            <p>8.    Henry    650</p>
+            <p>9.    Ivy      600</p>
+            <p>10.   Jack     550</p>
+        </div>
+        
+        <div class="button">BACK</div>
+        <p>✅ Tabbed interface with top 10 scores, names, and gold/silver/bronze highlighting</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>4. Implementation Features Checklist</h2>
+        <ul>
+            <li>✅ Track top 10 scores for Music Memory, Classic Memory, MEMOMU Memory modes</li>
+            <li>✅ Prompt for name when achieving top 10 score</li>
+            <li>✅ No prompt for Battle or Monluck modes (as specified)</li>
+            <li>✅ LEADERBOARD button styled identically to other main buttons</li>
+            <li>✅ Leaderboard page with tabs for each supported mode</li>
+            <li>✅ Tab navigation to switch between modes</li>
+            <li>✅ Display top 10 scores with names</li>
+            <li>✅ localStorage persistence for leaderboard data</li>
+            <li>✅ Keyboard input handling (Enter/Escape/Backspace/characters)</li>
+            <li>✅ Consistent UI styling with existing game design</li>
+        </ul>
+    </div>
+
+    <div class="demo-section">
+        <h2>5. Technical Implementation Summary</h2>
+        <pre style="background: #f0f0f0; padding: 10px; overflow-x: auto;">
+Key Functions Added:
+- addHighScore(mode, score, name) - Enhanced to store names
+- isTopTenScore(mode, score) - Check if score qualifies for top 10
+- showNameInput(mode, score) - Display name input dialog
+- submitNameInput() - Process name and update leaderboard
+- drawLeaderboard() - Render leaderboard page with tabs
+- drawNameInput() - Render name input overlay
+
+Game States:
+- Added "leaderboard" to gameState management
+- Enhanced click handlers for leaderboard navigation
+- Keyboard event handling for name input
+
+Data Structure:
+- highScores[mode] = [{ score, name, timestamp }, ...]
+- Supports musicMemory, memoryClassic, memoryMemomu modes
+- localStorage persistence maintained
+        </pre>
+    </div>
+
+    <script>
+        // Demo tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
