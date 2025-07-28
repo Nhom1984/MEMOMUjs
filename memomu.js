@@ -259,6 +259,7 @@ let battleGame = {
   finished: false,
   chooseRects: [],
   aiResult: null,
+  endSoundPlayed: false, // Flag to ensure end sound plays only once
 };
 
 // --- GRID/TILE HELPERS ---
@@ -1103,6 +1104,7 @@ function resetBattleGame() {
   battleGame.finished = false;
   battleGame.chooseRects = [];
   battleGame.aiResult = null;
+  battleGame.endSoundPlayed = false; // Reset the end sound flag
 }
 function prepareBattleRound() {
   const avatars = Math.floor(Math.random() * 5) + 1;
@@ -1953,6 +1955,27 @@ function drawBattleGame() {
   } else if (battleGame.state === "vs" || battleGame.state === "fight") {
     drawBattleGrids();
   } else if (battleGame.state === "end") {
+    // Play win/lose sound only once when entering end state
+    if (!battleGame.endSoundPlayed) {
+      battleGame.endSoundPlayed = true;
+      if (soundOn) {
+        if (battleGame.pscore > battleGame.oscore) {
+          // Player wins - play yupi sound
+          let sfx = assets.sounds["yupi"];
+          if (sfx) {
+            try { sfx.currentTime = 0; sfx.play(); } catch (e) { }
+          }
+        } else if (battleGame.pscore < battleGame.oscore) {
+          // Player loses - play buuuu sound
+          let sfx = assets.sounds["buuuu"];
+          if (sfx) {
+            try { sfx.currentTime = 0; sfx.play(); } catch (e) { }
+          }
+        }
+        // No sound for draw
+      }
+    }
+    
     ctx.fillStyle = "#222";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     let img_sz = 130;
@@ -1994,7 +2017,7 @@ function drawBattleGame() {
 function drawBattleGrids() {
   ctx.fillStyle = "#222";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  let img_sz = 100, grid_img_sz = 48;
+  let img_sz = 100, grid_img_sz = 58; // Increased from 48 to 58 (20% larger)
   let pimg = assets.images[`avatar${battleGame.player + 1}`], oimg = assets.images[`avatar${battleGame.opponent + 1}`];
   if (pimg) ctx.drawImage(pimg, 100, 60, img_sz, img_sz);
   if (oimg) ctx.drawImage(oimg, WIDTH - 200, 60, img_sz, img_sz);
@@ -2007,7 +2030,7 @@ function drawBattleGrids() {
   ctx.fillText(battleGame.pscore, WIDTH / 2 - 70, 180);
   ctx.fillText(battleGame.oscore, WIDTH / 2 + 70, 180);
 
-  let gx = 120, gy = 260, cell_sz = 56;
+  let gx = 120, gy = 260, cell_sz = 67; // Increased from 56 to 67 (20% larger)
   for (let i = 0; i < 16; i++) {
     let x = gx + (i % 4) * cell_sz * 1.2;
     let y = gy + Math.floor(i / 4) * cell_sz * 1.2;
@@ -2019,12 +2042,17 @@ function drawBattleGrids() {
     ctx.fill();
     ctx.stroke();
     let v = battleGame.grid[i];
-    if (battleGame.flashing && v !== null) {
+    // Show images during flash phase or click phase
+    if ((battleGame.flashing || battleGame.phase === "click") && v !== null) {
       let img = v;
       if (img) ctx.drawImage(img, x + 4, y + 4, grid_img_sz, grid_img_sz);
     }
+    // Add highlighting for clicked tiles
     if (battleGame.phase === "click" && battleGame.clicks.includes(i)) {
-      ctx.strokeStyle = "#00ff00"; ctx.lineWidth = 4;
+      // Green highlight for correct target, red for wrong
+      const isCorrectTarget = battleGame.targets.includes(i);
+      ctx.strokeStyle = isCorrectTarget ? "#00ff00" : "#ff0000"; 
+      ctx.lineWidth = 4;
       ctx.strokeRect(x + 2, y + 2, cell_sz - 4, cell_sz - 4);
     }
     ctx.restore();
@@ -2049,12 +2077,12 @@ function drawBattleGrids() {
   }
   battleButtons[3].draw();
   if (battleGame.phase === "result") {
-    ctx.font = "22px Arial";
+    ctx.font = "18px Arial"; // Reduced from 22px to 18px
     let color = battleGame.resultText.startsWith("YOU WIN") ? "#00ff00" :
       battleGame.resultText.startsWith("YOU LOSE") ? "#ff0000" : "#ffb6c1";
     ctx.fillStyle = color;
     ctx.textAlign = "center";
-    ctx.fillText(battleGame.resultText, WIDTH / 2, 580); // Position between grids and QUIT button
+    ctx.fillText(battleGame.resultText, WIDTH / 2, 570); // Moved up slightly and made smaller
   }
   if (battleGame.phase === "click") {
     let left = Math.max(0, 15 - (performance.now() / 1000 - battleGame.anim));
@@ -2510,7 +2538,7 @@ function handleBattleClick(mx, my) {
     return;
   }
   function handleBattleGridClick(mx, my) {
-    let gx = 120, gy = 260, cell_sz = 56, spacing = cell_sz * 1.2;
+    let gx = 120, gy = 260, cell_sz = 67, spacing = cell_sz * 1.2; // Updated to match new size
     for (let i = 0; i < 16; i++) {
       let x = gx + (i % 4) * spacing;
       let y = gy + Math.floor(i / 4) * spacing;
@@ -2521,7 +2549,14 @@ function handleBattleClick(mx, my) {
         // Only allow if not already clicked and only during the click phase
         if (!battleGame.clicks.includes(i) && battleGame.phase === "click") {
           battleGame.clicks.push(i);
-          // Your additional game logic can go here (e.g., check win/loss, etc)
+          
+          // Check if this is a wrong click (not a target) - ends round immediately
+          if (!battleGame.targets.includes(i)) {
+            // Wrong click - end round immediately, no sound during gameplay
+            battleGame.playerTime = performance.now() / 1000 - battleGame.anim;
+            processBattleResult();
+          }
+          
           drawBattleGame(); // Redraw to show the click
         }
         break;
