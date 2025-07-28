@@ -106,9 +106,28 @@ class Button {
 }
 
 // --- GAME STATE ---
-let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu_rules, memory_memomu, monluck, battle
-let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuRulesButtons = [], memoryMemomuButtons = [], memoryMemomuScoreButtons = [], monluckButtons = [], battleButtons = [];
+let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu_rules, memory_memomu, monluck, battle, leaderboard
+let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuRulesButtons = [], memoryMemomuButtons = [], memoryMemomuScoreButtons = [], monluckButtons = [], battleButtons = [], leaderboardButtons = [];
 let soundOn = true;
+
+// --- LEADERBOARD STATE ---
+let leaderboard = {
+  currentTab: "musicMemory", // musicMemory, memoryClassic, memoryMemomu
+  tabs: [
+    { key: "musicMemory", label: "MUSIC" },
+    { key: "memoryClassic", label: "CLASSIC" },
+    { key: "memoryMemomu", label: "MEMOMU" }
+  ]
+};
+
+// --- NAME INPUT STATE ---
+let nameInput = {
+  active: false,
+  mode: "",
+  score: 0,
+  currentName: "",
+  maxLength: 12
+};
 
 // --- GAME OVER OVERLAY ---
 let gameOverOverlay = {
@@ -320,9 +339,9 @@ function saveHighScores() {
   }
 }
 
-function addHighScore(mode, score) {
+function addHighScore(mode, score, name = null) {
   const timestamp = new Date().toISOString();
-  const entry = { score, timestamp };
+  const entry = { score, timestamp, name };
 
   if (!highScores[mode]) highScores[mode] = [];
   highScores[mode].push(entry);
@@ -334,6 +353,12 @@ function addHighScore(mode, score) {
   saveHighScores();
 }
 
+function isTopTenScore(mode, score) {
+  if (!highScores[mode]) return true;
+  if (highScores[mode].length < 10) return true;
+  return score > highScores[mode][9].score;
+}
+
 function getTopScore(mode) {
   if (!highScores[mode] || highScores[mode].length === 0) return 0;
   return highScores[mode][0].score;
@@ -341,11 +366,19 @@ function getTopScore(mode) {
 
 // --- GAME OVER OVERLAY FUNCTIONS ---
 function showGameOverOverlay(mode, finalScore) {
+  // Check if this is a leaderboard mode and if score qualifies for top 10
+  const leaderboardModes = ["musicMemory", "memoryClassic", "memoryMemomu"];
+  if (leaderboardModes.includes(mode) && isTopTenScore(mode, finalScore)) {
+    // Show name input instead of game over overlay
+    showNameInput(mode, finalScore);
+    return;
+  }
+
   gameOverOverlay.active = true;
   gameOverOverlay.mode = mode;
   gameOverOverlay.finalScore = finalScore;
 
-  // Add to high scores
+  // Add to high scores without name for non-leaderboard modes
   addHighScore(mode, finalScore);
 
   // Setup overlay buttons
@@ -360,6 +393,36 @@ function hideGameOverOverlay() {
   gameOverOverlay.mode = "";
   gameOverOverlay.finalScore = 0;
   gameOverOverlay.buttons = [];
+}
+
+// --- NAME INPUT FUNCTIONS ---
+function showNameInput(mode, score) {
+  nameInput.active = true;
+  nameInput.mode = mode;
+  nameInput.score = score;
+  nameInput.currentName = "";
+}
+
+function hideNameInput() {
+  nameInput.active = false;
+  nameInput.mode = "";
+  nameInput.score = 0;
+  nameInput.currentName = "";
+}
+
+function submitNameInput() {
+  const name = nameInput.currentName.trim() || "Anonymous";
+  addHighScore(nameInput.mode, nameInput.score, name);
+  hideNameInput();
+  
+  // Show game over overlay after name submission
+  gameOverOverlay.active = true;
+  gameOverOverlay.mode = nameInput.mode;
+  gameOverOverlay.finalScore = nameInput.score;
+  gameOverOverlay.buttons = [
+    new Button("PLAY AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50),
+    new Button("QUIT", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
+  ];
 }
 
 function drawGameOverOverlay() {
@@ -422,6 +485,139 @@ function handleGameOverOverlayClick(mx, my) {
   return true; // Block all other clicks when overlay is active
 }
 
+// --- NAME INPUT DRAWING ---
+function drawNameInput() {
+  if (!nameInput.active) return;
+
+  // Semi-transparent overlay
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // Main container
+  ctx.fillStyle = "#ffb6c1";
+  ctx.strokeStyle = "#ff1493";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(WIDTH / 2 - 250, HEIGHT / 2 - 150, 500, 300, 20);
+  ctx.fill();
+  ctx.stroke();
+
+  // Title text
+  ctx.font = "36px Arial";
+  ctx.fillStyle = "#8b0000";
+  ctx.textAlign = "center";
+  ctx.fillText("🏆 TOP 10 SCORE! 🏆", WIDTH / 2, HEIGHT / 2 - 80);
+
+  // Score text
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#000";
+  ctx.fillText(`Score: ${nameInput.score}`, WIDTH / 2, HEIGHT / 2 - 40);
+
+  // Prompt text
+  ctx.font = "20px Arial";
+  ctx.fillText("Enter your name:", WIDTH / 2, HEIGHT / 2 - 10);
+
+  // Name input box
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "#ff1493";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(WIDTH / 2 - 120, HEIGHT / 2 + 10, 240, 40, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  // Current name text
+  ctx.font = "18px Arial";
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "center";
+  ctx.fillText(nameInput.currentName || "_", WIDTH / 2, HEIGHT / 2 + 35);
+
+  // Instructions
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#444";
+  ctx.fillText("Press ENTER to submit or ESC to skip", WIDTH / 2, HEIGHT / 2 + 80);
+}
+
+// --- LEADERBOARD DRAWING ---
+function drawLeaderboard() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  
+  // Background
+  ctx.fillStyle = "#ffb6c1";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // Title
+  ctx.font = "42px Arial";
+  ctx.fillStyle = "#836EF9";
+  ctx.textAlign = "center";
+  ctx.fillText("LEADERBOARD", WIDTH / 2, 80);
+
+  // Draw tabs
+  const tabWidth = 150;
+  const tabHeight = 50;
+  const tabY = 120;
+  const totalTabsWidth = leaderboard.tabs.length * tabWidth;
+  const startX = WIDTH / 2 - totalTabsWidth / 2;
+
+  for (let i = 0; i < leaderboard.tabs.length; i++) {
+    const tab = leaderboard.tabs[i];
+    const x = startX + i * tabWidth;
+    const isActive = tab.key === leaderboard.currentTab;
+
+    // Tab background
+    ctx.fillStyle = isActive ? "#ff69b4" : "#ffc0cb";
+    ctx.strokeStyle = "#ff1493";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, tabY, tabWidth, tabHeight, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // Tab text
+    ctx.font = "18px Arial";
+    ctx.fillStyle = isActive ? "#fff" : "#333";
+    ctx.textAlign = "center";
+    ctx.fillText(tab.label, x + tabWidth / 2, tabY + tabHeight / 2 + 6);
+  }
+
+  // Draw leaderboard content
+  const scores = highScores[leaderboard.currentTab] || [];
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#333";
+  ctx.textAlign = "center";
+  
+  if (scores.length === 0) {
+    ctx.fillText("No scores yet!", WIDTH / 2, HEIGHT / 2);
+  } else {
+    // Header
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#666";
+    ctx.fillText("Rank    Name    Score", WIDTH / 2, 220);
+    
+    // Scores list
+    ctx.font = "18px Arial";
+    for (let i = 0; i < Math.min(scores.length, 10); i++) {
+      const score = scores[i];
+      const y = 250 + i * 30;
+      const rank = i + 1;
+      const name = score.name || "Anonymous";
+      const scoreText = score.score;
+      
+      // Highlight top 3
+      if (rank <= 3) {
+        ctx.fillStyle = rank === 1 ? "#ffd700" : rank === 2 ? "#c0c0c0" : "#cd7f32";
+      } else {
+        ctx.fillStyle = "#333";
+      }
+      
+      ctx.fillText(`${rank}.    ${name}    ${scoreText}`, WIDTH / 2, y);
+    }
+  }
+
+  // Draw back button
+  leaderboardButtons[0].draw();
+}
+
 function restartCurrentGame() {
   switch (gameOverOverlay.mode) {
     case "musicMemory":
@@ -473,9 +669,10 @@ function endBattleGame() {
 // --- BUTTONS SETUP ---
 function setupButtons() {
   menuButtons = [
-    new Button("NEW GAME", WIDTH / 2, 425, 240, 70),
+    new Button("NEW GAME", WIDTH / 2, 400, 240, 70),
     new Button("", WIDTH - 100, 55, 55, 44, "sound"),
-    new Button("QUIT", WIDTH / 2, 504, 150, 60),
+    new Button("LEADERBOARD", WIDTH / 2, 480, 240, 70),
+    new Button("QUIT", WIDTH / 2, 560, 150, 60),
   ];
   let modeY = 295 + 85;
   let modeGap = 60;
@@ -530,6 +727,11 @@ function setupButtons() {
     new Button("BACK", WIDTH / 2, 400, 170, 60),
     new Button("QUIT", WIDTH / 2, 650, 170, 45),
     new Button("MENU", WIDTH / 2, HEIGHT - 60, 180, 48)
+  ];
+  
+  // Leaderboard buttons
+  leaderboardButtons = [
+    new Button("BACK", WIDTH / 2, HEIGHT - 50, 150, 50)
   ];
 }
 
@@ -2090,7 +2292,8 @@ canvas.addEventListener("click", function (e) {
       if (soundOn && music) music.play();
       else if (music) music.pause();
     }
-    else if (menuButtons[2].isInside(mx, my)) { window.close(); }
+    else if (menuButtons[2].isInside(mx, my)) { gameState = "leaderboard"; }
+    else if (menuButtons[3].isInside(mx, my)) { window.close(); }
   } else if (gameState === "mode") {
     if (modeButtons[0].isInside(mx, my)) {
       let music = assets.sounds["music"];
@@ -2270,6 +2473,46 @@ canvas.addEventListener("click", function (e) {
     else if (memoryMemomuScoreButtons[2].isInside(mx, my)) { gameState = "menu"; }
   } else if (gameState === "battle") {
     handleBattleClick(mx, my);
+  } else if (gameState === "leaderboard") {
+    // Handle tab clicks
+    const tabWidth = 150;
+    const tabHeight = 50;
+    const tabY = 120;
+    const totalTabsWidth = leaderboard.tabs.length * tabWidth;
+    const startX = WIDTH / 2 - totalTabsWidth / 2;
+
+    for (let i = 0; i < leaderboard.tabs.length; i++) {
+      const x = startX + i * tabWidth;
+      if (mx >= x && mx <= x + tabWidth && my >= tabY && my <= tabY + tabHeight) {
+        leaderboard.currentTab = leaderboard.tabs[i].key;
+        break;
+      }
+    }
+
+    // Handle back button
+    if (leaderboardButtons[0].isInside(mx, my)) {
+      gameState = "menu";
+    }
+  }
+});
+
+// --- KEYBOARD EVENT HANDLER ---
+document.addEventListener("keydown", function(e) {
+  if (nameInput.active) {
+    if (e.key === "Enter") {
+      submitNameInput();
+    } else if (e.key === "Escape") {
+      // Skip name input - submit as Anonymous
+      submitNameInput();
+    } else if (e.key === "Backspace") {
+      nameInput.currentName = nameInput.currentName.slice(0, -1);
+    } else if (e.key.length === 1 && nameInput.currentName.length < nameInput.maxLength) {
+      // Add character if it's printable and under max length
+      if (e.key.match(/[a-zA-Z0-9 !@#$%^&*()_+-=\[\]{};':"\\|,.<>\/?]/)) {
+        nameInput.currentName += e.key;
+      }
+    }
+    e.preventDefault();
   }
 });
 
@@ -2661,6 +2904,10 @@ function draw() {
   else if (gameState === "memory_memomu_score") drawMemomuScoreTable();
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
+  else if (gameState === "leaderboard") drawLeaderboard();
+  
+  // Draw name input overlay on top of everything
+  drawNameInput();
 }
 
 // --- GAME LOOP ---
