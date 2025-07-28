@@ -40,7 +40,7 @@ for (let i = 1; i <= 6; i++) imageFiles.push({ name: `memimg${i}`, src: `assets/
 // Add all images for upgraded Classic Memory (image1-33 + monad)
 for (let i = 1; i <= 33; i++) imageFiles.push({ name: `classicimg${i}`, src: `assets/image${i}.png` });
 imageFiles.push({ name: `classicmonad`, src: `assets/monad.png` });
-for (let i = 1; i <= 30; i++) imageFiles.push({ name: `mmimg${i}`, src: `assets/image${(i % 12) + 1}.png` });
+// Don't preload fixed mmimg assets, we'll use the available image pool directly
 // Load 16 battle avatars: A-P, R
 const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'R'];
 for (let i = 0; i < avatarLetters.length; i++) {
@@ -194,7 +194,7 @@ let memoryGame = {
 
   // New upgraded Classic Memory features
   currentRound: 1,
-  maxRounds: 5,
+  maxRounds: 10,
   roundScores: [], // Store score for each round
   timer: 0,
   roundStartTime: 0,
@@ -212,6 +212,7 @@ let memomuGame = {
   found: [],
   clicksUsed: 0,
   allowedClicks: 0,
+  wrongClicks: 0, // Track wrong clicks for early termination
   showSplash: true,
   splashTimer: 45,
   splashMsg: "MEMOMU Memory",
@@ -226,7 +227,10 @@ let memomuGame = {
   roundScores: [], // Track score for each round
   gameCompleted: false,
   showScoreTable: false,
-  showGo: false // For GO button after rules
+  showGo: false, // For GO button after rules
+  imagePool: [], // Pool of all available images (1-33)
+  gridImages: [], // Current image assignments for grid tiles
+  usedImages: [] // Track used images to ensure variety
 };
 
 // --- MONLUCK MODE DATA ---
@@ -614,6 +618,7 @@ function drawLeaderboard() {
 function restartCurrentGame() {
   switch (gameOverOverlay.mode) {
     case "musicMemory":
+      gameState = "musicmem";
       startMusicMemoryGame();
       break;
     case "memoryClassic":
@@ -623,9 +628,11 @@ function restartCurrentGame() {
       startMemoryGameMemomu();
       break;
     case "monluck":
+      gameState = "monluck";
       startMonluckGame();
       break;
     case "battle":
+      gameState = "battle";
       resetBattleGame();
       break;
   }
@@ -1088,7 +1095,7 @@ function getClassicRoundGrid(round) {
 
 function initializeClassicMemoryUpgraded() {
   memoryGame.currentRound = 1;
-  memoryGame.maxRounds = 5;
+  memoryGame.maxRounds = 10;
   memoryGame.roundScores = [];
   memoryGame.score = 0;
   memoryGame.showRules = true;
@@ -1202,6 +1209,14 @@ function startMemoryGameMemomu() {
   memomuGame.showSplash = true;
   memomuGame.splashTimer = 60;
   memomuGame.splashMsg = "Round 1";
+  
+  // Initialize image pool with all available images (1-33)
+  memomuGame.imagePool = [];
+  for (let i = 1; i <= 33; i++) {
+    memomuGame.imagePool.push(i);
+  }
+  memomuGame.usedImages = [];
+  
   setupMemoryMemomuRound();
 }
 function setupMemoryMemomuRound() {
@@ -1218,7 +1233,38 @@ function setupMemoryMemomuRound() {
   memomuGame.flashSeq = chosen;
   memomuGame.found = [];
   memomuGame.clicksUsed = 0;
+  memomuGame.wrongClicks = 0; // Reset wrong clicks counter
   memomuGame.allowedClicks = n + 1; // N+1 clicks allowed
+
+  // Assign random images to grid tiles, ensuring variety
+  memomuGame.gridImages = [];
+  let availableImages = [...memomuGame.imagePool];
+  
+  // If we've used more than half the images, reset the used list to ensure variety
+  if (memomuGame.usedImages.length > availableImages.length / 2) {
+    memomuGame.usedImages = [];
+  }
+  
+  // Remove recently used images from available pool
+  availableImages = availableImages.filter(img => !memomuGame.usedImages.includes(img));
+  
+  for (let i = 0; i < 30; i++) {
+    // If we run out of unused images, refill from the full pool
+    if (availableImages.length === 0) {
+      availableImages = [...memomuGame.imagePool];
+      memomuGame.usedImages = [];
+    }
+    
+    // Pick a random image from available ones
+    let randomIndex = Math.floor(Math.random() * availableImages.length);
+    let selectedImage = availableImages[randomIndex];
+    
+    memomuGame.gridImages.push(selectedImage);
+    memomuGame.usedImages.push(selectedImage);
+    
+    // Remove this image from available pool for this round to avoid immediate repeats
+    availableImages.splice(randomIndex, 1);
+  }
 
   // Calculate time limit: Round 1 = 3s, Round 2+ = N + 2*(N-1)
   if (n === 1) {
@@ -1607,6 +1653,13 @@ function drawMusicMemory() {
   ctx.font = "21px Arial";
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText("Score: " + musicMem.score, WIDTH / 11, HEIGHT - 600);
+  
+  // Show current best score
+  let bestScore = getTopScore("musicMemory");
+  if (bestScore > 0) {
+    ctx.fillStyle = musicMem.score > bestScore ? "#ffd700" : "#ffb6c1"; // Gold if beating, pink otherwise
+    ctx.fillText("Best: " + Math.max(bestScore, musicMem.score), WIDTH / 11, HEIGHT - 575);
+  }
 
   // Phase messages are now displayed above the grid (lines 1514-1522) instead of as overlays
 
@@ -1727,6 +1780,13 @@ function drawMemoryGameClassic() {
   ctx.textAlign = "left";
   ctx.fillText(`Round: ${memoryGame.currentRound}/${memoryGame.maxRounds}`, 20, 40);
   ctx.fillText(`Score: ${memoryGame.score}`, 20, 70);
+  
+  // Show current best score
+  let bestScore = getTopScore("memoryClassic");
+  if (bestScore > 0) {
+    ctx.fillStyle = memoryGame.score > bestScore ? "#ffd700" : "#ff69b4"; // Gold if beating, pink otherwise
+    ctx.fillText(`Best: ${Math.max(bestScore, memoryGame.score)}`, 20, 130);
+  }
 
   // Timer with color coding (red when < 5 seconds)
   ctx.fillStyle = memoryGame.timeRemaining < 5 ? "#ff0000" : "#ff69b4";
@@ -1858,6 +1918,13 @@ function drawMemoryGameMemomu() {
   ctx.textAlign = "left";
   ctx.fillText("Round: " + memomuGame.round + " / " + memomuGame.maxRounds, 20, 50);
   ctx.fillText("Score: " + memomuGame.score, 20, 75);
+  
+  // Show current best score
+  let bestScore = getTopScore("memoryMemomu");
+  if (bestScore > 0) {
+    ctx.fillStyle = memomuGame.score > bestScore ? "#ffd700" : "#ffb6c1"; // Gold if beating, pink otherwise
+    ctx.fillText("Best: " + Math.max(bestScore, memomuGame.score), 20, 100);
+  }
 
   // Timer
   if (memomuGame.phase === "guess") {
@@ -1892,7 +1959,8 @@ function drawMemoryGameMemomu() {
   // Grid
   memomuGame.grid.forEach((tile, i) => {
     ctx.save();
-    let img = assets.images["mmimg" + (i + 1)];
+    let imageId = memomuGame.gridImages[i];
+    let img = assets.images["classicimg" + imageId];
     if (tile.revealed && img) {
       ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
     } else {
@@ -2570,6 +2638,7 @@ function handleMemoryTileClickMemomu(idx) {
     tile.feedback = "#00ff00";
   } else {
     // Wrong image clicked
+    memomuGame.wrongClicks++;
     let sfx = assets.sounds["kuku"];
     if (soundOn && sfx) { try { sfx.currentTime = 0; sfx.play(); } catch (e) { } }
     tile.feedback = "#ff0000";
@@ -2578,7 +2647,9 @@ function handleMemoryTileClickMemomu(idx) {
   // Check if round is complete
   let allFound = memomuGame.found.length === memomuGame.flashSeq.length;
   let isPerfect = allFound && memomuGame.clicksUsed === memomuGame.flashSeq.length;
-  let isComplete = allFound || memomuGame.clicksUsed >= memomuGame.allowedClicks;
+  let maxClicksReached = memomuGame.clicksUsed >= memomuGame.allowedClicks;
+  let tooManyWrongClicks = memomuGame.wrongClicks >= 2; // End after 2 wrong clicks
+  let isComplete = allFound || maxClicksReached || tooManyWrongClicks;
 
   if (isComplete) {
     memomuGame.phase = "done";
@@ -2599,7 +2670,11 @@ function handleMemoryTileClickMemomu(idx) {
     } else {
       // Failed round: 1 point per image found, game ends
       pts = memomuGame.found.length;
-      memomuGame.feedback = `Failed! Found ${memomuGame.found.length}/${memomuGame.flashSeq.length}. Game Over!`;
+      if (tooManyWrongClicks) {
+        memomuGame.feedback = `Too many wrong clicks! Found ${memomuGame.found.length}/${memomuGame.flashSeq.length}. Game Over!`;
+      } else {
+        memomuGame.feedback = `Failed! Found ${memomuGame.found.length}/${memomuGame.flashSeq.length}. Game Over!`;
+      }
     }
 
     memomuGame.score += pts;
@@ -2798,10 +2873,8 @@ function nextMusicMemRound() {
     musicMem.phase = "memory";
     setupMusicMemRound();
   } else {
-    musicMem.showRoundSplash = true;
-    musicMem.splashTimer = 120;
-    musicMem.splashMsg = "Game Over!\nFinal Score: " + musicMem.score;
-    setTimeout(() => { gameState = "mode"; }, 4000);
+    // Game completed - show game over overlay with Play Again option
+    endMusicMemoryGame();
   }
   drawMusicMemory();
 }
