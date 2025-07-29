@@ -692,7 +692,7 @@ function setupButtons() {
   ];
   musicMemButtons = [
     new Button("START", WIDTH / 2, HEIGHT - 100, 180, 48),
-    new Button("QUIT", WIDTH / 2, HEIGHT - 50, 180, 48)
+    new Button("MENU", WIDTH / 2, HEIGHT - 50, 180, 48)
   ];
   let memY = 300;
   memoryMenuButtons = [
@@ -704,14 +704,14 @@ function setupButtons() {
     new Button("GOT IT", WIDTH / 2, HEIGHT - 100, 200, 60)
   ];
   memoryClassicButtons = [
-    new Button("QUIT", WIDTH / 2, HEIGHT - 60, 150, 48)
+    new Button("MENU", WIDTH / 2, HEIGHT - 60, 150, 48)
   ];
   memoryMemomuRulesButtons = [
     new Button("GOT IT", WIDTH / 2, HEIGHT - 100, 200, 60)
   ];
   memoryMemomuButtons = [
     new Button("GO!", WIDTH / 2, HEIGHT - 300, 120, 60),
-    new Button("QUIT", WIDTH / 2, HEIGHT - 45, 120, 48)
+    new Button("MENU", WIDTH / 2, HEIGHT - 45, 120, 48)
   ];
   monluckButtons = [
     new Button("AGAIN", WIDTH / 2 - 190, HEIGHT - 60, 160, 48),
@@ -1636,7 +1636,7 @@ function drawMusicMemory() {
   if (!musicMem.gameStarted && !musicMem.showRoundSplash) {
     musicMemButtons.forEach(b => b.draw());
   } else if (musicMem.gameStarted && musicMem.phase === "guessing") {
-    // Only show QUIT button during gameplay
+    // Only show MENU button during gameplay
     musicMemButtons[1].draw();
   }
 
@@ -1834,7 +1834,7 @@ function drawMemoryGameClassic() {
     ctx.restore();
   });
 
-  // Buttons (only QUIT)
+  // Buttons (only MENU)
   memoryClassicButtons.forEach(b => b.draw());
 
   // Feedback
@@ -1959,7 +1959,7 @@ function drawMemoryGameMemomu() {
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 80);
 
-  // QUIT button always at bottom
+  // MENU button always at bottom
   memoryMemomuButtons[1].draw();
 
   // Splash screen
