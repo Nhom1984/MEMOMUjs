@@ -419,7 +419,7 @@ function submitNameInput() {
   const name = nameInput.currentName.trim() || "Anonymous";
   addHighScore(nameInput.mode, nameInput.score, name);
   hideNameInput();
-  
+
   // Show game over overlay after name submission
   gameOverOverlay.active = true;
   gameOverOverlay.mode = nameInput.mode;
@@ -477,7 +477,23 @@ function handleGameOverOverlayClick(mx, my) {
     if (button.isInside(mx, my)) {
       if (button.label === "PLAY AGAIN") {
         hideGameOverOverlay();
-        restartCurrentGame();
+        if (gameOverOverlay.mode === "musicMemory") {
+          gameState = "musicmem";
+          startMusicMemoryGame();
+          musicMem.gameStarted = false;
+          musicMem.showRoundSplash = false;
+          startMemoryPhase(); // same as pressing START
+        } else if (gameOverOverlay.mode === "memoryMemomu") {
+          gameState = "memory_memomu";
+          memomuGame.showGo = false;
+          startMemoryGameMemomu();
+          memomuGame.showSplash = true;
+          memomuGame.splashTimer = 25; // 25 frames = quick splash
+          memomuGame.splashMsg = "Round 1";
+          drawMemoryGameMemomu(); // same as pressing GO
+        } else {
+          restartCurrentGame();
+        }
       } else if (button.label === "MENU") {
         hideGameOverOverlay();
         gameState = "menu";
@@ -540,7 +556,7 @@ function drawNameInput() {
 // --- LEADERBOARD DRAWING ---
 function drawLeaderboard() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  
+
   // Background
   ctx.fillStyle = "#ffb6c1";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -582,7 +598,7 @@ function drawLeaderboard() {
   ctx.font = "24px Arial";
   ctx.fillStyle = "#333";
   ctx.textAlign = "center";
-  
+
   if (scores.length === 0) {
     ctx.fillText("No scores yet!", WIDTH / 2, HEIGHT / 2);
   } else {
@@ -590,7 +606,7 @@ function drawLeaderboard() {
     ctx.font = "20px Arial";
     ctx.fillStyle = "#666";
     ctx.fillText("Rank    Name    Score", WIDTH / 2, 220);
-    
+
     // Scores list
     ctx.font = "18px Arial";
     for (let i = 0; i < Math.min(scores.length, 10); i++) {
@@ -599,14 +615,14 @@ function drawLeaderboard() {
       const rank = i + 1;
       const name = score.name || "Anonymous";
       const scoreText = score.score;
-      
+
       // Highlight top 3
       if (rank <= 3) {
         ctx.fillStyle = rank === 1 ? "#ffd700" : rank === 2 ? "#c0c0c0" : "#cd7f32";
       } else {
         ctx.fillStyle = "#333";
       }
-      
+
       ctx.fillText(`${rank}.    ${name}    ${scoreText}`, WIDTH / 2, y);
     }
   }
@@ -619,7 +635,8 @@ function restartCurrentGame() {
   switch (gameOverOverlay.mode) {
     case "musicMemory":
       gameState = "musicmem";
-      startMusicMemoryGame();
+      startMusicMemoryGame();   // resets state
+      startMemoryPhase();       // this is the same as clicking START
       break;
     case "memoryClassic":
       initializeClassicMemoryUpgraded();
@@ -627,7 +644,8 @@ function restartCurrentGame() {
       break;
     case "memoryMemomu":
       gameState = "memory_memomu";
-      startMemoryGameMemomu();
+      memomuGame.showGo = false;    // hides the Go screen
+      startMemoryGameMemomu();      // this is the same as clicking Go
       break;
     case "monluck":
       gameState = "monluck";
@@ -725,7 +743,7 @@ function setupButtons() {
     new Button("QUIT", WIDTH / 2, 650, 170, 45),
     new Button("MENU", WIDTH / 2, HEIGHT - 60, 180, 48)
   ];
-  
+
   // Leaderboard buttons
   leaderboardButtons = [
     new Button("BACK", WIDTH / 2, HEIGHT - 50, 150, 50)
@@ -1198,6 +1216,9 @@ function endClassicRound() {
 
 // --- MEMOMU MEMORY MODE LOGIC ---
 function startMemoryGameMemomu() {
+  memomuGame.failed = false;
+  memomuGame.phase = "show";
+  memomuGame.feedback = "";
   memomuGame.round = 1;
   memomuGame.score = 0;
   memomuGame.roundScores = [];
@@ -1206,14 +1227,14 @@ function startMemoryGameMemomu() {
   memomuGame.showSplash = true;
   memomuGame.splashTimer = 60;
   memomuGame.splashMsg = "Round 1";
-  
+
   // Initialize image pool with all available images (1-33)
   memomuGame.imagePool = [];
   for (let i = 1; i <= 33; i++) {
     memomuGame.imagePool.push(i);
   }
   memomuGame.usedImages = [];
-  
+
   setupMemoryMemomuRound();
 }
 function setupMemoryMemomuRound() {
@@ -1236,29 +1257,29 @@ function setupMemoryMemomuRound() {
   // Assign random images to grid tiles, ensuring variety
   memomuGame.gridImages = [];
   let availableImages = [...memomuGame.imagePool];
-  
+
   // If we've used more than half the images, reset the used list to ensure variety
   if (memomuGame.usedImages.length > availableImages.length / 2) {
     memomuGame.usedImages = [];
   }
-  
+
   // Remove recently used images from available pool
   availableImages = availableImages.filter(img => !memomuGame.usedImages.includes(img));
-  
+
   for (let i = 0; i < 30; i++) {
     // If we run out of unused images, refill from the full pool
     if (availableImages.length === 0) {
       availableImages = [...memomuGame.imagePool];
       memomuGame.usedImages = [];
     }
-    
+
     // Pick a random image from available ones
     let randomIndex = Math.floor(Math.random() * availableImages.length);
     let selectedImage = availableImages[randomIndex];
-    
+
     memomuGame.gridImages.push(selectedImage);
     memomuGame.usedImages.push(selectedImage);
-    
+
     // Remove this image from available pool for this round to avoid immediate repeats
     availableImages.splice(randomIndex, 1);
   }
@@ -1574,7 +1595,7 @@ function drawMusicMemory() {
   ctx.font = "24px Arial";
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText(phaseText, WIDTH - 200, 70);
-  
+
   // Phase instruction
   if (phaseInstruction) {
     ctx.font = "18px Arial";
@@ -1650,7 +1671,7 @@ function drawMusicMemory() {
   ctx.font = "21px Arial";
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText("Score: " + musicMem.score, WIDTH / 11, HEIGHT - 600);
-  
+
   // Show current best score
   let bestScore = getTopScore("musicMemory");
   if (bestScore > 0) {
@@ -1777,7 +1798,7 @@ function drawMemoryGameClassic() {
   ctx.textAlign = "left";
   ctx.fillText(`Round: ${memoryGame.currentRound}/${memoryGame.maxRounds}`, 20, 40);
   ctx.fillText(`Score: ${memoryGame.score}`, 20, 70);
-  
+
   // Show current best score
   let bestScore = getTopScore("memoryClassic");
   if (bestScore > 0) {
@@ -1890,7 +1911,7 @@ function drawMemoryGameMemomu() {
   ctx.textAlign = "left";
   ctx.fillText("Round: " + memomuGame.round + " / " + memomuGame.maxRounds, 20, 50);
   ctx.fillText("Score: " + memomuGame.score, 20, 75);
-  
+
   // Show current best score
   let bestScore = getTopScore("memoryMemomu");
   if (bestScore > 0) {
@@ -2517,7 +2538,7 @@ canvas.addEventListener("click", function (e) {
 });
 
 // --- KEYBOARD EVENT HANDLER ---
-document.addEventListener("keydown", function(e) {
+document.addEventListener("keydown", function (e) {
   if (nameInput.active) {
     if (e.key === "Enter") {
       submitNameInput();
@@ -2929,7 +2950,7 @@ function draw() {
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
   else if (gameState === "leaderboard") drawLeaderboard();
-  
+
   // Draw name input overlay on top of everything
   drawNameInput();
 }
