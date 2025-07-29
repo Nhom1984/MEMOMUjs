@@ -479,16 +479,16 @@ function handleGameOverOverlayClick(mx, my) {
         hideGameOverOverlay();
         if (gameOverOverlay.mode === "musicMemory") {
           gameState = "musicmem";
-          startMusicMemoryGame();
-          musicMem.gameStarted = false;
-          musicMem.showRoundSplash = false;
-          startMemoryPhase(); // same as pressing START
+          startMusicMemoryGame(false); // No splash for PLAY AGAIN
+          startMemoryPhase(); // Start immediately like pressing START
+          drawMusicMemory(); // Redraw the new board
         } else if (gameOverOverlay.mode === "memoryMemomu") {
           gameState = "memory_memomu";
           memomuGame.showGo = false;
-          startMemoryGameMemomu();
-          // After PLAY AGAIN, behave exactly as after pressing GO: no splash, start immediately
-          memomuGame.showSplash = false;
+          startMemoryGameMemomu(false); // No splash for PLAY AGAIN
+          // Start immediately like pressing GO - trigger the flash sequence after a short delay
+          setTimeout(runMemoryMemomuFlashSequence, 900);
+          drawMemoryGameMemomu(); // Redraw the new board
         } else {
           restartCurrentGame();
         }
@@ -633,8 +633,9 @@ function restartCurrentGame() {
   switch (gameOverOverlay.mode) {
     case "musicMemory":
       gameState = "musicmem";
-      startMusicMemoryGame();   // resets state
-      startMemoryPhase();       // this is the same as clicking START
+      startMusicMemoryGame(false);   // No splash for restart
+      startMemoryPhase();            // Start immediately like pressing START
+      drawMusicMemory();             // Redraw the new board
       break;
     case "memoryClassic":
       initializeClassicMemoryUpgraded();
@@ -642,8 +643,11 @@ function restartCurrentGame() {
       break;
     case "memoryMemomu":
       gameState = "memory_memomu";
-      memomuGame.showGo = false;    // hides the Go screen
-      startMemoryGameMemomu();      // this is the same as clicking Go
+      memomuGame.showGo = false;     // Hide the Go screen
+      startMemoryGameMemomu(false);  // No splash for restart
+      // Start immediately like pressing GO - trigger the flash sequence after a short delay
+      setTimeout(runMemoryMemomuFlashSequence, 900);
+      drawMemoryGameMemomu();        // Redraw the new board
       break;
     case "monluck":
       gameState = "monluck";
@@ -749,11 +753,11 @@ function setupButtons() {
 }
 
 // --- MUSIC MEMORY LOGIC ---
-function startMusicMemoryGame() {
+function startMusicMemoryGame(showSplash = true) {
   musicMem.currentRound = 1;
   musicMem.score = 0;
-  musicMem.showRoundSplash = true;
-  musicMem.splashTimer = 30;
+  musicMem.showRoundSplash = showSplash;
+  musicMem.splashTimer = showSplash ? 30 : 0;
   musicMem.splashMsg = "Round 1";
   musicMem.gameStarted = false;
   musicMem.phase = "memory";
@@ -1213,7 +1217,7 @@ function endClassicRound() {
 }
 
 // --- MEMOMU MEMORY MODE LOGIC ---
-function startMemoryGameMemomu() {
+function startMemoryGameMemomu(showSplash = true) {
   memomuGame.failed = false;
   memomuGame.phase = "show";
   memomuGame.feedback = "";
@@ -1222,8 +1226,8 @@ function startMemoryGameMemomu() {
   memomuGame.roundScores = [];
   memomuGame.gameCompleted = false;
   memomuGame.showScoreTable = false;
-  memomuGame.showSplash = true;
-  memomuGame.splashTimer = 60;
+  memomuGame.showSplash = showSplash;
+  memomuGame.splashTimer = showSplash ? 60 : 0;
   memomuGame.splashMsg = "Round 1";
 
   // Initialize image pool with all available images (1-33)
