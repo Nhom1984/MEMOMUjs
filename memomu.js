@@ -487,10 +487,8 @@ function handleGameOverOverlayClick(mx, my) {
           gameState = "memory_memomu";
           memomuGame.showGo = false;
           startMemoryGameMemomu();
-          memomuGame.showSplash = true;
-          memomuGame.splashTimer = 25; // 25 frames = quick splash
-          memomuGame.splashMsg = "Round 1";
-          drawMemoryGameMemomu(); // same as pressing GO
+          // After PLAY AGAIN, behave exactly as after pressing GO: no splash, start immediately
+          memomuGame.showSplash = false;
         } else {
           restartCurrentGame();
         }
