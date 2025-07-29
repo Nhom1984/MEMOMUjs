@@ -105,7 +105,7 @@ class Button {
 
 // --- GAME STATE ---
 let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu_rules, memory_memomu, monluck, battle, leaderboard
-let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuRulesButtons = [], memoryMemomuButtons = [], memoryMemomuScoreButtons = [], monluckButtons = [], battleButtons = [], leaderboardButtons = [];
+let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuRulesButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [], leaderboardButtons = [];
 let soundOn = true;
 
 // --- LEADERBOARD STATE ---
@@ -389,7 +389,7 @@ function showGameOverOverlay(mode, finalScore) {
   // Setup overlay buttons
   gameOverOverlay.buttons = [
     new Button("PLAY AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50),
-    new Button("QUIT", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
+    new Button("MENU", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
   ];
 }
 
@@ -426,7 +426,7 @@ function submitNameInput() {
   gameOverOverlay.finalScore = nameInput.score;
   gameOverOverlay.buttons = [
     new Button("PLAY AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50),
-    new Button("QUIT", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
+    new Button("MENU", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
   ];
 }
 
@@ -478,7 +478,7 @@ function handleGameOverOverlayClick(mx, my) {
       if (button.label === "PLAY AGAIN") {
         hideGameOverOverlay();
         restartCurrentGame();
-      } else if (button.label === "QUIT") {
+      } else if (button.label === "MENU") {
         hideGameOverOverlay();
         gameState = "menu";
       }
@@ -622,9 +622,11 @@ function restartCurrentGame() {
       startMusicMemoryGame();
       break;
     case "memoryClassic":
-      startMemoryGameClassic();
+      initializeClassicMemoryUpgraded();
+      startClassicRound();
       break;
     case "memoryMemomu":
+      gameState = "memory_memomu";
       startMemoryGameMemomu();
       break;
     case "monluck":
@@ -710,11 +712,6 @@ function setupButtons() {
   memoryMemomuButtons = [
     new Button("GO!", WIDTH / 2, HEIGHT - 300, 120, 60),
     new Button("QUIT", WIDTH / 2, HEIGHT - 45, 120, 48)
-  ];
-  memoryMemomuScoreButtons = [
-    new Button("PLAY AGAIN", WIDTH / 2 - 110, HEIGHT - 100, 200, 50),
-    new Button("MAIN MENU", WIDTH / 2 + 110, HEIGHT - 100, 200, 50),
-    new Button("QUIT", WIDTH / 2, HEIGHT - 40, 150, 40)
   ];
   monluckButtons = [
     new Button("AGAIN", WIDTH / 2 - 190, HEIGHT - 60, 160, 48),
@@ -1869,31 +1866,6 @@ function drawMemoryGameClassic() {
   drawGameOverOverlay();
 }
 // Draw score table for Memomu game
-function drawMemomuScoreTable() {
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = "#836EF9";
-  ctx.font = "36px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText("MEMOMU Memory - Final Score", WIDTH / 2, 60);
-
-  // Score table
-  ctx.font = "20px Arial";
-  ctx.fillStyle = "#fff";
-  let startY = 120;
-  ctx.fillText("Round | Score | Perfect | Completed", WIDTH / 2, startY);
-
-  for (let i = 0; i < memomuGame.roundScores.length; i++) {
-    let round = memomuGame.roundScores[i];
-    let statusText = round.completed ? (round.perfect ? "Perfect" : "Complete") : "Failed";
-    ctx.fillText(`${round.round} | ${round.score} | ${round.perfect ? "YES" : "NO"} | ${statusText}`, WIDTH / 2, startY + 30 + (i * 25));
-  }
-
-  ctx.font = "28px Arial";
-  ctx.fillStyle = "#ffd700";
-  ctx.fillText(`Total Score: ${memomuGame.score}`, WIDTH / 2, startY + 50 + (memomuGame.roundScores.length * 25));
-
-  memoryMemomuScoreButtons.forEach(b => b.draw());
-}
 function drawMemoryGameMemomu() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -1948,7 +1920,7 @@ function drawMemoryGameMemomu() {
       setTimeout(() => {
         memomuGame.gameCompleted = true;
         memomuGame.showScoreTable = true;
-        gameState = "memory_memomu_score";
+        endMemoryMemomuGame();
       }, 2000);
     }
 
@@ -2519,14 +2491,6 @@ canvas.addEventListener("click", function (e) {
         }
       }
     }
-  } else if (gameState === "memory_memomu_score") {
-    if (memoryMemomuScoreButtons[0].isInside(mx, my)) {
-      // Play Again - restart the MEMOMU Memory game
-      startMemoryGameMemomu();
-      gameState = "memory_memomu_rules";
-    }
-    else if (memoryMemomuScoreButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
-    else if (memoryMemomuScoreButtons[2].isInside(mx, my)) { gameState = "menu"; }
   } else if (gameState === "battle") {
     handleBattleClick(mx, my);
   } else if (gameState === "leaderboard") {
@@ -2690,12 +2654,12 @@ function handleMemoryTileClickMemomu(idx) {
         // Game over - failed round
         memomuGame.gameCompleted = true;
         memomuGame.showScoreTable = true;
-        gameState = "memory_memomu_score";
+        endMemoryMemomuGame();
       } else if (memomuGame.round >= memomuGame.maxRounds) {
         // Game completed - all rounds done
         memomuGame.gameCompleted = true;
         memomuGame.showScoreTable = true;
-        gameState = "memory_memomu_score";
+        endMemoryMemomuGame();
       } else {
         // Next round
         memomuGame.round++;
@@ -2962,7 +2926,6 @@ function draw() {
   else if (gameState === "memory_classic") drawMemoryGameClassic();
   else if (gameState === "memory_memomu_rules") drawMemomuMemoryRules();
   else if (gameState === "memory_memomu") drawMemoryGameMemomu();
-  else if (gameState === "memory_memomu_score") drawMemomuScoreTable();
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
   else if (gameState === "leaderboard") drawLeaderboard();
