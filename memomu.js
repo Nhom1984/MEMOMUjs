@@ -677,7 +677,9 @@ function endMemoryClassicGame() {
 }
 
 function endMemoryMemomuGame() {
-  showGameOverOverlay("memoryMemomu", memomuGame.score);
+  // For MEMOMU mode, don't use the standard overlay - show custom score table instead
+  // The game completed state is already set by the calling code
+  // Draw function will handle showing the score table with PLAY AGAIN button
 }
 
 function endMonluckGame() {
@@ -1971,7 +1973,20 @@ function drawMemoryGameMemomu() {
   ctx.fillStyle = "#ffb6c1";
   ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 80);
 
-  // MENU button always at bottom
+  // Show PLAY AGAIN button on score table when game is completed
+  if (memomuGame.gameCompleted) {
+    // Draw score table area
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText("Final Score: " + memomuGame.score, WIDTH / 2, HEIGHT - 150);
+    
+    // Draw PLAY AGAIN button positioned on the score table
+    let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2, HEIGHT - 110, 200, 50);
+    playAgainButton.draw();
+  }
+
+  // MENU button always at bottom (only show if game is not completed, or always show as per requirement)
   memoryMemomuButtons[1].draw();
 
   // REMOVED: Splash screen logic - no more splash screens
@@ -1982,8 +1997,7 @@ function drawMemoryGameMemomu() {
   ctx.textAlign = "right";
   ctx.fillText("© 2025 Nhom1984", WIDTH - 35, HEIGHT - 22);
 
-  // Draw game over overlay if active
-  drawGameOverOverlay();
+  // NOTE: Removed drawGameOverOverlay() call for MEMOMU mode - using custom score table instead
 }
 function drawMonluckGame() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -2416,6 +2430,21 @@ canvas.addEventListener("click", function (e) {
       }
     }
   } else if (gameState === "memory_memomu") {
+    // Handle PLAY AGAIN button when game is completed
+    if (memomuGame.gameCompleted) {
+      let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2, HEIGHT - 110, 200, 50);
+      if (playAgainButton.isInside(mx, my)) {
+        // Restart the MEMOMU game without splash
+        gameState = "memory_memomu";
+        memomuGame.showGo = false;
+        startMemoryGameMemomu(false); // No splash for PLAY AGAIN
+        // Start immediately like pressing GO - trigger the flash sequence after a short delay
+        setTimeout(runMemoryMemomuFlashSequence, 900);
+        drawMemoryGameMemomu(); // Redraw the new board
+        return; // Exit early to prevent other click handling
+      }
+    }
+    
     if (memoryMemomuButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
     else if (memoryMemomuButtons[0].isInside(mx, my) && memomuGame.showGo) {
       memomuGame.showGo = false;
