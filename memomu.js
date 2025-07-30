@@ -1968,22 +1968,27 @@ function drawMemoryGameMemomu() {
     ctx.fillText(`Find ${memomuGame.flashSeq.length} images! (${memomuGame.clicksUsed}/${memomuGame.allowedClicks} clicks)`, WIDTH / 2, HEIGHT - 80);
   }
 
-  // Feedback
-  ctx.font = "20px Arial";
-  ctx.fillStyle = "#ffb6c1";
-  ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 80);
-
   // Show PLAY AGAIN button on score table when game is completed
   if (memomuGame.gameCompleted) {
-    // Draw score table area
+    // Draw score table area instead of regular feedback
     ctx.font = "24px Arial";
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.fillText("Final Score: " + memomuGame.score, WIDTH / 2, HEIGHT - 150);
     
+    // Show final feedback message above score
+    ctx.font = "18px Arial";
+    ctx.fillStyle = "#ffb6c1";
+    ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 180);
+    
     // Draw PLAY AGAIN button positioned on the score table
     let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2, HEIGHT - 110, 200, 50);
     playAgainButton.draw();
+  } else {
+    // Feedback (only during gameplay)
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#ffb6c1";
+    ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 80);
   }
 
   // MENU button always at bottom (only show if game is not completed, or always show as per requirement)
