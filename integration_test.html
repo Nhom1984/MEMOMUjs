@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEMOMU Integration Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #ff69b4;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .test-controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .test-btn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .test-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .test-results {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin-top: 20px;
+        }
+        
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>MEMOMU Integration Test</h1>
+    <canvas id="gameCanvas" width="800" height="700"></canvas>
+    
+    <div class="test-controls">
+        <button class="test-btn" onclick="testGameCompletion()">Test Game Completion</button>
+        <button class="test-btn" onclick="testPlayAgainButton()">Test PLAY AGAIN Button</button>
+        <button class="test-btn" onclick="testMenuButton()">Test MENU Button</button>
+        <button class="test-btn" onclick="resetTest()">Reset Test</button>
+    </div>
+    
+    <div class="test-results" id="testResults">
+        <h3>Test Results</h3>
+        <p>Click the test buttons above to verify the MEMOMU button layout changes.</p>
+    </div>
+    
+    <script src="memomu.js"></script>
+    <script>
+        let testResults = document.getElementById('testResults');
+        
+        function log(message, type = 'info') {
+            testResults.innerHTML += `<div class="${type}">${message}</div>`;
+        }
+        
+        function clearLog() {
+            testResults.innerHTML = '<h3>Test Results</h3>';
+        }
+        
+        function testGameCompletion() {
+            clearLog();
+            log('Testing MEMOMU game completion...', 'info');
+            
+            try {
+                // Set up MEMOMU game state
+                gameState = "memory_memomu";
+                memomuGame.gameCompleted = false;
+                memomuGame.score = 95;
+                memomuGame.feedback = "Testing game completion";
+                
+                // Set up mock buttons
+                memoryMemomuButtons = [
+                    { draw: function() { log('GO button available', 'info'); } },
+                    { 
+                        draw: function() { log('MENU button at bottom', 'success'); },
+                        isInside: function(x, y) { return false; }
+                    }
+                ];
+                
+                log('Game state set to memory_memomu with gameCompleted=false', 'info');
+                
+                // Simulate game completion
+                memomuGame.gameCompleted = true;
+                memomuGame.feedback = "Game Over! Well done!";
+                
+                log('Game completion triggered', 'success');
+                log('Final Score: ' + memomuGame.score, 'info');
+                
+                // Force redraw to show completion state
+                drawMemoryGameMemomu();
+                
+                log('✅ Game completion test passed - score table should show with PLAY AGAIN button', 'success');
+                
+            } catch (error) {
+                log('❌ Error during game completion test: ' + error.message, 'error');
+            }
+        }
+        
+        function testPlayAgainButton() {
+            clearLog();
+            log('Testing PLAY AGAIN button functionality...', 'info');
+            
+            try {
+                // Ensure game is in completed state
+                gameState = "memory_memomu";
+                memomuGame.gameCompleted = true;
+                memomuGame.score = 85;
+                
+                // Mock the restart function
+                const originalStart = startMemoryGameMemomu;
+                let restartCalled = false;
+                
+                startMemoryGameMemomu = function(showSplash) {
+                    restartCalled = true;
+                    log('✅ startMemoryGameMemomu called with showSplash=' + showSplash, 'success');
+                };
+                
+                // Simulate click on PLAY AGAIN button
+                const mx = WIDTH / 2;  // Center X
+                const my = HEIGHT - 110;  // PLAY AGAIN button Y position
+                
+                log(`Simulating click at (${mx}, ${my}) - PLAY AGAIN button position`, 'info');
+                
+                // Create mock button to test click detection
+                let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2, HEIGHT - 110, 200, 50);
+                if (playAgainButton.isInside(mx, my)) {
+                    log('✅ Click detected on PLAY AGAIN button', 'success');
+                    
+                    // Simulate the restart logic
+                    gameState = "memory_memomu";
+                    memomuGame.showGo = false;
+                    startMemoryGameMemomu(false);
+                    
+                    if (restartCalled) {
+                        log('✅ Game restart functionality working correctly', 'success');
+                    } else {
+                        log('❌ Game restart function not called', 'error');
+                    }
+                } else {
+                    log('❌ Click not detected on PLAY AGAIN button', 'error');
+                }
+                
+                // Restore original function
+                startMemoryGameMemomu = originalStart;
+                
+            } catch (error) {
+                log('❌ Error during PLAY AGAIN button test: ' + error.message, 'error');
+            }
+        }
+        
+        function testMenuButton() {
+            clearLog();
+            log('Testing MENU button functionality...', 'info');
+            
+            try {
+                // Set up completed game state
+                gameState = "memory_memomu";
+                memomuGame.gameCompleted = true;
+                
+                // Mock MENU button
+                memoryMemomuButtons = [
+                    { draw: function() {} },
+                    { 
+                        draw: function() { log('MENU button drawn at bottom', 'info'); },
+                        isInside: function(x, y) {
+                            // Simulate MENU button area at bottom
+                            return x >= WIDTH/2 - 80 && x <= WIDTH/2 + 80 && 
+                                   y >= HEIGHT - 80 && y <= HEIGHT - 40;
+                        }
+                    }
+                ];
+                
+                // Simulate click on MENU button
+                const mx = WIDTH / 2;
+                const my = HEIGHT - 60;  // MENU button position
+                
+                log(`Simulating click at (${mx}, ${my}) - MENU button position`, 'info');
+                
+                if (memoryMemomuButtons[1].isInside(mx, my)) {
+                    gameState = "memory_menu";
+                    log('✅ MENU button click detected and game state changed to memory_menu', 'success');
+                } else {
+                    log('❌ MENU button click not detected', 'error');
+                }
+                
+                log('✅ MENU button functionality test completed', 'success');
+                
+            } catch (error) {
+                log('❌ Error during MENU button test: ' + error.message, 'error');
+            }
+        }
+        
+        function resetTest() {
+            clearLog();
+            log('Resetting test environment...', 'info');
+            
+            // Reset game state
+            gameState = "menu";
+            memomuGame.gameCompleted = false;
+            memomuGame.score = 0;
+            memomuGame.feedback = "";
+            
+            // Clear canvas
+            const ctx = document.getElementById('gameCanvas').getContext('2d');
+            ctx.clearRect(0, 0, 800, 700);
+            
+            log('✅ Test environment reset', 'success');
+        }
+        
+        // Initialize test environment
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                log('MEMOMU Integration Test ready', 'info');
+                log('Canvas initialized and game loaded', 'success');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

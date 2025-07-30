@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEMOMU Button Layout Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #ff69b4;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>MEMOMU Button Layout Test</h1>
+    <canvas id="gameCanvas" width="800" height="700"></canvas>
+    
+    <script src="memomu.js"></script>
+    <script>
+        // Override the game loading to directly test the game completed state
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                // Simulate a completed MEMOMU game
+                gameState = "memory_memomu";
+                memomuGame.gameCompleted = true;
+                memomuGame.score = 85;
+                memomuGame.feedback = "Game completed! Final score: 85";
+                
+                // Set up basic buttons for testing
+                memoryMemomuButtons = [
+                    { label: "GO", x: WIDTH / 2, y: HEIGHT / 2, w: 200, h: 50, draw: function() {} },
+                    { label: "MENU", x: WIDTH / 2, y: HEIGHT - 60, w: 160, h: 48, 
+                      draw: function() {
+                        ctx.strokeStyle = "#ff69b4";
+                        ctx.lineWidth = 3;
+                        ctx.fillStyle = "#ffb6c1";
+                        ctx.fillRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
+                        ctx.strokeRect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
+                        ctx.fillStyle = "#222";
+                        ctx.font = "20px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(this.label, this.x, this.y);
+                      },
+                      isInside: function(mx, my) {
+                        return mx >= this.x - this.w / 2 && mx <= this.x + this.w / 2 &&
+                               my >= this.y - this.h / 2 && my <= this.y + this.h / 2;
+                      }
+                    }
+                ];
+                
+                // Force redraw
+                drawMemoryGameMemomu();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
