@@ -156,9 +156,9 @@ let musicMem = {
   score: 0,
   feedback: "",
   tiles: [],
-  showRoundSplash: true,
-  splashTimer: 0,
-  splashMsg: "",
+  // showRoundSplash: true,     // REMOVED - no more splash screens
+  // splashTimer: 0,            // REMOVED - no more splash screens
+  // splashMsg: "",             // REMOVED - no more splash screens
 
   // New 3-phase structure
   phase: "memory", // memory, deception, guessing
@@ -187,9 +187,9 @@ let memoryGame = {
   pairsFound: 0,
   attempts: 0,
   feedback: "",
-  showSplash: true,
-  splashTimer: 40,
-  splashMsg: "Classic Memory",
+  // showSplash: true,           // REMOVED - no more splash screens
+  // splashTimer: 40,            // REMOVED - no more splash screens
+  // splashMsg: "Classic Memory", // REMOVED - no more splash screens
   score: 0,
 
   // New upgraded Classic Memory features
@@ -213,9 +213,9 @@ let memomuGame = {
   clicksUsed: 0,
   allowedClicks: 0,
   wrongClicks: 0, // Track wrong clicks for early termination
-  showSplash: true,
-  splashTimer: 45,
-  splashMsg: "MEMOMU Memory",
+  // showSplash: true,           // REMOVED - no more splash screens
+  // splashTimer: 45,            // REMOVED - no more splash screens
+  // splashMsg: "MEMOMU Memory", // REMOVED - no more splash screens
   round: 1,
   score: 0,
   timer: 0,
@@ -240,9 +240,9 @@ let monluckGame = {
   monadIndices: [],
   found: [],
   clicks: 0,
-  showSplash: true,
-  splashTimer: 40,
-  splashMsg: "MONLUCK",
+  // showSplash: true,      // REMOVED - no more splash screens
+  // splashTimer: 40,       // REMOVED - no more splash screens
+  // splashMsg: "MONLUCK",  // REMOVED - no more splash screens
   finished: false,
   result: "",
   score: 0,
@@ -753,12 +753,12 @@ function setupButtons() {
 }
 
 // --- MUSIC MEMORY LOGIC ---
-function startMusicMemoryGame(showSplash = true) {
+function startMusicMemoryGame(showSplash = false) { // CHANGED: Default to no splash
   musicMem.currentRound = 1;
   musicMem.score = 0;
-  musicMem.showRoundSplash = showSplash;
-  musicMem.splashTimer = showSplash ? 30 : 0;
-  musicMem.splashMsg = "Round 1";
+  // musicMem.showRoundSplash = showSplash;     // REMOVED - no more splash screens
+  // musicMem.splashTimer = showSplash ? 30 : 0; // REMOVED - no more splash screens
+  // musicMem.splashMsg = "Round 1";            // REMOVED - no more splash screens
   musicMem.gameStarted = false;
   musicMem.phase = "memory";
 
@@ -1162,9 +1162,9 @@ function setupClassicRound(round) {
   memoryGame.pairsFound = 0;
   memoryGame.attempts = 0;
   memoryGame.feedback = "";
-  memoryGame.showSplash = true;
-  memoryGame.splashTimer = 40;
-  memoryGame.splashMsg = `Round ${round}`;
+  // memoryGame.showSplash = true;           // REMOVED - no more splash screens
+  // memoryGame.splashTimer = 40;            // REMOVED - no more splash screens
+  // memoryGame.splashMsg = `Round ${round}`; // REMOVED - no more splash screens
   memoryGame.roundStartTime = performance.now();
   memoryGame.timeRemaining = 30;
 }
@@ -1217,7 +1217,7 @@ function endClassicRound() {
 }
 
 // --- MEMOMU MEMORY MODE LOGIC ---
-function startMemoryGameMemomu(showSplash = true) {
+function startMemoryGameMemomu(showSplash = false) { // CHANGED: Default to no splash
   memomuGame.failed = false;
   memomuGame.phase = "show";
   memomuGame.feedback = "";
@@ -1226,9 +1226,9 @@ function startMemoryGameMemomu(showSplash = true) {
   memomuGame.roundScores = [];
   memomuGame.gameCompleted = false;
   memomuGame.showScoreTable = false;
-  memomuGame.showSplash = showSplash;
-  memomuGame.splashTimer = showSplash ? 60 : 0;
-  memomuGame.splashMsg = "Round 1";
+  // memomuGame.showSplash = showSplash;           // REMOVED - no more splash screens
+  // memomuGame.splashTimer = showSplash ? 60 : 0; // REMOVED - no more splash screens
+  // memomuGame.splashMsg = "Round 1";             // REMOVED - no more splash screens
 
   // Initialize image pool with all available images (1-33)
   memomuGame.imagePool = [];
@@ -1332,9 +1332,9 @@ function startMonluckGame() {
   monluckGame.finished = false;
   monluckGame.result = "";
   monluckGame.score = 0;
-  monluckGame.showSplash = true;
-  monluckGame.splashTimer = 40;
-  monluckGame.splashMsg = "MONLUCK";
+  // monluckGame.showSplash = true;     // REMOVED - no more splash screens
+  // monluckGame.splashTimer = 40;      // REMOVED - no more splash screens
+  // monluckGame.splashMsg = "MONLUCK"; // REMOVED - no more splash screens
 }
 
 // --- BATTLE LOGIC ---
@@ -1656,7 +1656,7 @@ function drawMusicMemory() {
   });
 
   // Draw buttons based on game state
-  if (!musicMem.gameStarted && !musicMem.showRoundSplash) {
+  if (!musicMem.gameStarted) { // CHANGED: Removed showRoundSplash condition
     musicMemButtons.forEach(b => b.draw());
   } else if (musicMem.gameStarted && musicMem.phase === "guessing") {
     // Only show MENU button during gameplay
@@ -1784,7 +1784,7 @@ function drawMemoryGameClassic() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   // Update timer
-  if (!memoryGame.showSplash && !memoryGame.lock) {
+  if (!memoryGame.lock) { // CHANGED: Removed showSplash condition
     let elapsed = (performance.now() - memoryGame.roundStartTime) / 1000;
     memoryGame.timeRemaining = Math.max(0, 30 - elapsed);
 
@@ -1866,18 +1866,7 @@ function drawMemoryGameClassic() {
   ctx.textAlign = "center";
   ctx.fillText(memoryGame.feedback, WIDTH / 2, HEIGHT - 120);
 
-  // Round splash
-  if (memoryGame.showSplash) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.font = "54px Arial";
-    ctx.fillStyle = "#ff69b4";
-    ctx.textAlign = "center";
-    ctx.fillText(memoryGame.splashMsg, WIDTH / 2, HEIGHT / 2);
-    ctx.restore();
-  }
+  // REMOVED: Round splash screen logic - no more splash screens
 
   // Copyright
   ctx.font = "16px Arial";
@@ -1985,18 +1974,7 @@ function drawMemoryGameMemomu() {
   // MENU button always at bottom
   memoryMemomuButtons[1].draw();
 
-  // Splash screen
-  if (memomuGame.showSplash) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.font = "54px Arial";
-    ctx.fillStyle = "#ff69b4";
-    ctx.textAlign = "center";
-    ctx.fillText(memomuGame.splashMsg, WIDTH / 2, HEIGHT / 2);
-    ctx.restore();
-  }
+  // REMOVED: Splash screen logic - no more splash screens
 
   // Copyright
   ctx.font = "16px Arial";
@@ -2086,7 +2064,7 @@ function drawMonluckGame() {
   });
 
   // Show progress during gameplay
-  if (!monluckGame.finished && !monluckGame.showSplash) {
+  if (!monluckGame.finished) { // CHANGED: Removed showSplash condition
     ctx.font = "24px Arial";
     ctx.fillStyle = "#836EF9";
     ctx.textAlign = "center";
@@ -2094,13 +2072,13 @@ function drawMonluckGame() {
   }
 
   // Only show QUIT button during gameplay, positioned centrally at bottom
-  if (!monluckGame.finished && !monluckGame.showSplash) {
+  if (!monluckGame.finished) { // CHANGED: Removed showSplash condition
     let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 48, 160, 48);
     quitButton.draw();
   }
 
   // Show AGAIN and MENU buttons only when finished (on score table)
-  if (monluckGame.finished && !monluckGame.showSplash) {
+  if (monluckGame.finished) { // CHANGED: Removed showSplash condition
     let againButton = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 60, 160, 48);
     let menuButton = new Button("MENU", WIDTH / 2 + 100, HEIGHT - 60, 160, 48);
     againButton.draw();
@@ -2114,17 +2092,8 @@ function drawMonluckGame() {
     ctx.fillText(monluckGame.result, WIDTH / 2, HEIGHT - 120);
   }
 
-  if (monluckGame.showSplash) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.font = "54px Arial";
-    ctx.fillStyle = "#ff69b4";
-    ctx.textAlign = "center";
-    ctx.fillText(monluckGame.splashMsg, WIDTH / 2, HEIGHT / 2);
-    ctx.restore();
-  }
+  // REMOVED: Splash screen logic - no more splash screens
+
   ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "right";
@@ -2396,14 +2365,14 @@ canvas.addEventListener("click", function (e) {
     }
   } else if (gameState === "musicmem") {
     if (musicMemButtons[0].isInside(mx, my)) {
-      if (!musicMem.gameStarted && !musicMem.showRoundSplash) {
+      if (!musicMem.gameStarted) { // CHANGED: Removed showRoundSplash condition
         startMemoryPhase();
       }
     }
     else if (musicMemButtons[1].isInside(mx, my)) { gameState = "mode"; }
 
     // Handle tile clicks during guessing phase
-    if (musicMem.phase === "guessing" && musicMem.allowInput && !musicMem.showRoundSplash) {
+    if (musicMem.phase === "guessing" && musicMem.allowInput) { // CHANGED: Removed showRoundSplash condition
       for (let tile of musicMem.grid) {
         if (
           mx >= tile.x &&
@@ -2431,7 +2400,7 @@ canvas.addEventListener("click", function (e) {
     }
   } else if (gameState === "memory_classic") {
     if (memoryClassicButtons[0].isInside(mx, my)) { gameState = "menu"; }
-    if (!memoryGame.showSplash && !memoryGame.lock && memoryGame.timeRemaining > 0) {
+    if (!memoryGame.lock && memoryGame.timeRemaining > 0) { // CHANGED: Removed showSplash condition
       for (let i = 0; i < memoryGame.grid.length; i++) {
         let tile = memoryGame.grid[i];
         if (
@@ -2451,8 +2420,10 @@ canvas.addEventListener("click", function (e) {
     else if (memoryMemomuButtons[0].isInside(mx, my) && memomuGame.showGo) {
       memomuGame.showGo = false;
       startMemoryGameMemomu();
+      // Start the flash sequence immediately
+      setTimeout(runMemoryMemomuFlashSequence, 900);
     }
-    if (!memomuGame.showSplash && !memomuGame.showGo && memomuGame.phase === "guess" && memomuGame.clicksUsed < memomuGame.allowedClicks) {
+    if (!memomuGame.showGo && memomuGame.phase === "guess" && memomuGame.clicksUsed < memomuGame.allowedClicks) { // CHANGED: Removed showSplash condition
       for (let i = 0; i < memomuGame.grid.length; i++) {
         let tile = memomuGame.grid[i];
         if (
@@ -2469,7 +2440,7 @@ canvas.addEventListener("click", function (e) {
     }
   } else if (gameState === "monluck") {
     // Handle AGAIN and MENU buttons when game is finished
-    if (monluckGame.finished && !monluckGame.showSplash) {
+    if (monluckGame.finished) { // CHANGED: Removed showSplash condition
       let againButton = new Button("AGAIN", WIDTH / 2 - 100, HEIGHT - 60, 160, 48);
       let menuButton = new Button("MENU", WIDTH / 2 + 100, HEIGHT - 60, 160, 48);
       if (againButton.isInside(mx, my)) {
@@ -2486,7 +2457,7 @@ canvas.addEventListener("click", function (e) {
     }
 
     // Handle QUIT button during gameplay
-    if (!monluckGame.finished && !monluckGame.showSplash) {
+    if (!monluckGame.finished) { // CHANGED: Removed showSplash condition
       let quitButton = new Button("QUIT", WIDTH / 2, HEIGHT - 60, 160, 48);
       if (quitButton.isInside(mx, my)) {
         // Leaving MONLUCK mode - restore background music if sound is on
@@ -2499,7 +2470,7 @@ canvas.addEventListener("click", function (e) {
     }
 
     // Handle tile clicks for gameplay
-    if (!monluckGame.showSplash && !monluckGame.finished) {
+    if (!monluckGame.finished) { // CHANGED: Removed showSplash condition
       for (let i = 0; i < monluckGame.grid.length; i++) {
         let tile = monluckGame.grid[i];
         if (
@@ -2686,10 +2657,12 @@ function handleMemoryTileClickMemomu(idx) {
       } else {
         // Next round
         memomuGame.round++;
-        memomuGame.showSplash = true;
-        memomuGame.splashTimer = 35;
-        memomuGame.splashMsg = "Round " + memomuGame.round;
+        // memomuGame.showSplash = true;               // REMOVED - no more splash screens
+        // memomuGame.splashTimer = 35;                // REMOVED - no more splash screens
+        // memomuGame.splashMsg = "Round " + memomuGame.round; // REMOVED - no more splash screens
         setupMemoryMemomuRound();
+        // Start the new round immediately
+        setTimeout(runMemoryMemomuFlashSequence, 900);
         drawMemoryGameMemomu();
       }
     }, 2000);
@@ -2753,23 +2726,13 @@ function handleMonluckTileClick(idx) {
     monluckGame.result = `YUPI! You found all ${monluckGame.found.length} monads in ${monluckGame.clicks} tries!`;
     monluckGame.finished = true;
 
-    // Show success message after a short delay
-    setTimeout(() => {
-      monluckGame.showSplash = true;
-      monluckGame.splashMsg = `Victory!\nScore: ${monluckGame.score}`;
-      drawMonluckGame();
-    }, 1100);
+    // REMOVED: Success splash screen - game ends immediately
   } else if (monluckGame.clicks >= 5) {
     // Game over - 5 tries used up
     monluckGame.result = `Game Over! Found ${monluckGame.found.length}/5 monads in 5 tries. Score: ${monluckGame.score}`;
     monluckGame.finished = true;
 
-    // Show game over message after a short delay
-    setTimeout(() => {
-      monluckGame.showSplash = true;
-      monluckGame.splashMsg = `Game Over!\nScore: ${monluckGame.score}`;
-      drawMonluckGame();
-    }, 1100);
+    // REMOVED: Game over splash screen - game ends immediately
   }
 }
 
@@ -2853,9 +2816,9 @@ function handleBattleClick(mx, my) {
 function nextMusicMemRound() {
   if (musicMem.currentRound < musicMem.maxRounds) {
     musicMem.currentRound++;
-    musicMem.showRoundSplash = true;
-    musicMem.splashTimer = 60;
-    musicMem.splashMsg = "Round " + musicMem.currentRound;
+    // musicMem.showRoundSplash = true;              // REMOVED - no more splash screens
+    // musicMem.splashTimer = 60;                    // REMOVED - no more splash screens
+    // musicMem.splashMsg = "Round " + musicMem.currentRound; // REMOVED - no more splash screens
     musicMem.gameStarted = false;
     musicMem.phase = "memory";
     setupMusicMemRound();
@@ -2866,38 +2829,11 @@ function nextMusicMemRound() {
   drawMusicMemory();
 }
 
-// --- SPLASH TIMER ---
+// --- SPLASH TIMER --- (REMOVED - no more splash screens)
 function tickSplash() {
-  if (gameState === "musicmem" && musicMem.showRoundSplash) {
-    if (musicMem.splashTimer > 0) musicMem.splashTimer--;
-    else {
-      musicMem.showRoundSplash = false;
-      musicMem.feedback = "";
-      drawMusicMemory();
-    }
-  }
+  // REMOVED: All splash screen logic
+  // This function is kept to avoid breaking references but does nothing now
 
-  if (gameState === "musicmem" && musicMem.showPhaseMessage) {
-    if (musicMem.phaseMessageTimer > 0) musicMem.phaseMessageTimer--;
-    else {
-      musicMem.showPhaseMessage = false;
-      drawMusicMemory();
-    }
-  }
-  if (gameState === "memory_classic" && memoryGame.showSplash) {
-    if (memoryGame.splashTimer > 0) memoryGame.splashTimer--;
-    else { memoryGame.showSplash = false; memoryGame.feedback = ""; drawMemoryGameClassic(); }
-  }
-  if (gameState === "memory_memomu" && memomuGame.showSplash) {
-    if (memomuGame.splashTimer > 0) memomuGame.splashTimer--;
-    else {
-      memomuGame.showSplash = false; memomuGame.feedback = ""; setTimeout(runMemoryMemomuFlashSequence, 900); // 0.9 seconds delay
-    }
-  }
-  if (gameState === "monluck" && monluckGame.showSplash) {
-    if (monluckGame.splashTimer > 0) monluckGame.splashTimer--;
-    else { monluckGame.showSplash = false; monluckGame.result = ""; drawMonluckGame(); }
-  }
   if (gameState === "battle") {
     if (battleGame.state === "vs") {
       if (battleGame.phase === "flash" && performance.now() / 1000 - battleGame.anim > 0.9) {
