@@ -43,9 +43,13 @@ const imageFiles = [
 
 for (let i = 1; i <= 18; i++) imageFiles.push({ name: `img${i}`, src: `assets/image${i}.png` });
 for (let i = 1; i <= 6; i++) imageFiles.push({ name: `memimg${i}`, src: `assets/image${i}.png` });
-// Add all images for upgraded Classic Memory (image1-33 + monad)
-for (let i = 1; i <= 33; i++) imageFiles.push({ name: `classicimg${i}`, src: `assets/image${i}.png` });
+// Add all images for upgraded Classic Memory (image1-37 + monad + avatars A-N)
+for (let i = 1; i <= 37; i++) imageFiles.push({ name: `classicimg${i}`, src: `assets/image${i}.png` });
 imageFiles.push({ name: `classicmonad`, src: `assets/monad.png` });
+// Add avatar images A-N for MEMOMU Memory expanded pool
+for (let i = 0; i < avatarLetters.length; i++) {
+  imageFiles.push({ name: `classicavatar${avatarLetters[i]}`, src: `assets/${avatarLetters[i]}.png` });
+}
 // Don't preload fixed mmimg assets, we'll use the available image pool directly
 // Load 16 battle avatars: A-P, R
 const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
@@ -206,6 +210,7 @@ let memoryGame = {
   roundStartTime: 0,
   timeRemaining: 30,
   showRules: true,
+  showClassicStartButton: false, // Show START button after "GOT IT"
   gameCompleted: false,
   allImages: [], // All available images for pairs
   roundPairCount: 0
@@ -229,12 +234,12 @@ let memomuGame = {
   timeStarted: 0,
   phase: "show", // show, guess, done
   feedback: "",
-  maxRounds: 10,
+  maxRounds: 20,
   roundScores: [], // Track score for each round
   gameCompleted: false,
   showScoreTable: false,
   showGo: false, // For GO button after rules
-  imagePool: [], // Pool of all available images (1-33)
+  imagePool: [], // Pool of all available images (1-37 + avatars A-N = 51 total)
   gridImages: [], // Current image assignments for grid tiles
   usedImages: [] // Track used images to ensure variety
 };
@@ -1150,6 +1155,7 @@ function initializeClassicMemoryUpgraded() {
   memoryGame.roundScores = [];
   memoryGame.score = 0;
   memoryGame.showRules = true;
+  memoryGame.showClassicStartButton = false; // Reset start button flag
   memoryGame.gameCompleted = false;
 
   // Prepare all available images (1-33 + monad = 34 total)
@@ -1265,21 +1271,38 @@ function startMemoryGameMemomu(showSplash = false) { // CHANGED: Default to no s
   // memomuGame.splashTimer = showSplash ? 60 : 0; // REMOVED - no more splash screens
   // memomuGame.splashMsg = "Round 1";             // REMOVED - no more splash screens
 
-  // Initialize image pool with all available images (1-33)
+  // Initialize image pool with all available images (1-37 + avatars A-N = 51 total)
   memomuGame.imagePool = [];
-  for (let i = 1; i <= 33; i++) {
+  // Add regular images 1-37
+  for (let i = 1; i <= 37; i++) {
     memomuGame.imagePool.push(i);
+  }
+  // Add avatar images A-N
+  const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
+  for (let letter of avatarLetters) {
+    memomuGame.imagePool.push(`avatar${letter}`);
   }
   memomuGame.usedImages = [];
 
   setupMemoryMemomuRound();
 }
 function setupMemoryMemomuRound() {
-  // 6 columns × 5 rows grid
-  memomuGame.grid = createGrid(5, 6, 85, 10, 125);
   let n = memomuGame.round;
+  
+  // Determine grid size based on round
+  let gridSize, gridTiles;
+  if (n <= 10) {
+    // Rounds 1-10: 6 columns × 5 rows (30 tiles)
+    memomuGame.grid = createGrid(5, 6, 85, 10, 125);
+    gridTiles = 30;
+  } else {
+    // Rounds 11-20: 7 columns × 7 rows (49 tiles) - smaller tiles to fit
+    memomuGame.grid = createGrid(7, 7, 70, 8, 100);
+    gridTiles = 49;
+  }
+  
   memomuGame.flashSeq = [];
-  let allIdx = Array.from({ length: 30 }, (_, i) => i);
+  let allIdx = Array.from({ length: gridTiles }, (_, i) => i);
   let chosen = [];
   while (chosen.length < n) {
     let idx = allIdx[Math.floor(Math.random() * allIdx.length)];
@@ -1295,37 +1318,54 @@ function setupMemoryMemomuRound() {
   memomuGame.gridImages = [];
   let availableImages = [...memomuGame.imagePool];
 
-  // If we've used more than half the images, reset the used list to ensure variety
-  if (memomuGame.usedImages.length > availableImages.length / 2) {
-    memomuGame.usedImages = [];
-  }
-
-  // Remove recently used images from available pool
-  availableImages = availableImages.filter(img => !memomuGame.usedImages.includes(img));
-
-  for (let i = 0; i < 30; i++) {
-    // If we run out of unused images, refill from the full pool
-    if (availableImages.length === 0) {
-      availableImages = [...memomuGame.imagePool];
+  // For rounds 11-20, we need 49 unique images from our pool of 51
+  if (n > 10) {
+    // Randomly select 49 images from the 51 available
+    let shuffledPool = [...memomuGame.imagePool];
+    for (let i = shuffledPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
+    }
+    availableImages = shuffledPool.slice(0, 49);
+  } else {
+    // For rounds 1-10, use the existing logic with variety tracking
+    if (memomuGame.usedImages.length > availableImages.length / 2) {
       memomuGame.usedImages = [];
     }
-
-    // Pick a random image from available ones
-    let randomIndex = Math.floor(Math.random() * availableImages.length);
-    let selectedImage = availableImages[randomIndex];
-
-    memomuGame.gridImages.push(selectedImage);
-    memomuGame.usedImages.push(selectedImage);
-
-    // Remove this image from available pool for this round to avoid immediate repeats
-    availableImages.splice(randomIndex, 1);
+    availableImages = availableImages.filter(img => !memomuGame.usedImages.includes(img));
   }
 
-  // Calculate time limit: Round 1 = 3s, Round 2+ = N + 2*(N-1)
+  for (let i = 0; i < gridTiles; i++) {
+    if (n > 10) {
+      // For rounds 11-20, use the pre-selected 49 images
+      memomuGame.gridImages.push(availableImages[i]);
+    } else {
+      // For rounds 1-10, use existing variety logic
+      if (availableImages.length === 0) {
+        availableImages = [...memomuGame.imagePool];
+        memomuGame.usedImages = [];
+      }
+
+      let randomIndex = Math.floor(Math.random() * availableImages.length);
+      let selectedImage = availableImages[randomIndex];
+
+      memomuGame.gridImages.push(selectedImage);
+      memomuGame.usedImages.push(selectedImage);
+
+      // Remove this image from available pool for this round to avoid immediate repeats
+      availableImages.splice(randomIndex, 1);
+    }
+  }
+
+  // Calculate time limit: Scale appropriately for rounds 11-20
   if (n === 1) {
     memomuGame.timeLimit = 3;
-  } else {
+  } else if (n <= 10) {
     memomuGame.timeLimit = n + 2 * (n - 1);
+  } else {
+    // For rounds 11-20, scale time limit more generously due to larger grid
+    let baseTime = n + 2 * (n - 1);
+    memomuGame.timeLimit = Math.round(baseTime * 1.5); // 50% more time for 7x7 grid
   }
 
   memomuGame.timer = 0;
@@ -1757,7 +1797,15 @@ function drawMemoryClassicRules() {
   ctx.fillText("1 point per pair + (seconds under 30) × round number", WIDTH / 2, 430);
   ctx.fillText("Each round: 30 seconds maximum", WIDTH / 2, 460);
 
-  memoryClassicRulesButtons.forEach(b => b.draw());
+  // Show different buttons based on state
+  if (memoryGame.showClassicStartButton) {
+    // Show START button
+    let startButton = new Button("START", WIDTH / 2, HEIGHT - 100, 200, 60);
+    startButton.draw();
+  } else {
+    // Show GOT IT button
+    memoryClassicRulesButtons.forEach(b => b.draw());
+  }
 
   // Copyright
   ctx.font = "16px Arial";
@@ -1979,7 +2027,15 @@ function drawMemoryGameMemomu() {
   memomuGame.grid.forEach((tile, i) => {
     ctx.save();
     let imageId = memomuGame.gridImages[i];
-    let img = assets.images["classicimg" + imageId];
+    let img;
+    
+    // Handle both regular images and avatar images
+    if (typeof imageId === 'string' && imageId.startsWith('avatar')) {
+      img = assets.images[`classic${imageId}`]; // e.g., classicavatarA
+    } else {
+      img = assets.images["classicimg" + imageId]; // e.g., classicimg1
+    }
+    
     if (tile.revealed && img) {
       ctx.drawImage(img, tile.x, tile.y, tile.size, tile.size);
     } else {
@@ -2439,8 +2495,15 @@ canvas.addEventListener("click", function (e) {
     else if (memoryMenuButtons[1].isInside(mx, my)) { gameState = "memory_memomu_rules"; }
     else if (memoryMenuButtons[2].isInside(mx, my)) { gameState = "mode"; }
   } else if (gameState === "memory_classic_rules") {
-    if (memoryClassicRulesButtons[0].isInside(mx, my)) {
-      startClassicRound();
+    if (!memoryGame.showClassicStartButton && memoryClassicRulesButtons[0].isInside(mx, my)) {
+      // "GOT IT" button clicked - show START button
+      memoryGame.showClassicStartButton = true;
+    } else if (memoryGame.showClassicStartButton) {
+      // Check if START button was clicked
+      let startButton = new Button("START", WIDTH / 2, HEIGHT - 100, 200, 60);
+      if (startButton.isInside(mx, my)) {
+        startClassicRound();
+      }
     }
   } else if (gameState === "memory_memomu_rules") {
     if (memoryMemomuRulesButtons[0].isInside(mx, my)) {
