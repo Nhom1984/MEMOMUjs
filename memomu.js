@@ -104,7 +104,7 @@ class Button {
 }
 
 // --- GAME STATE ---
-let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu_rules, memory_memomu, monluck, battle, leaderboard
+let gameState = "loading"; // loading, menu, mode, musicmem_rules, musicmem, memory_menu, memory_classic_rules, memory_classic, memory_memomu_rules, memory_memomu, monluck, battle, leaderboard, musicmem_post_score, memory_memomu_post_score
 let menuButtons = [], modeButtons = [], musicMemRulesButtons = [], musicMemButtons = [], memoryMenuButtons = [], memoryClassicRulesButtons = [], memoryClassicButtons = [], memoryMemomuRulesButtons = [], memoryMemomuButtons = [], monluckButtons = [], battleButtons = [], leaderboardButtons = [];
 let soundOn = true;
 
@@ -379,6 +379,23 @@ function showGameOverOverlay(mode, finalScore) {
     return;
   }
 
+  // For Music Memory and MEMOMU games, don't show overlay with buttons
+  // Instead show score table and transition to post-score state
+  if (mode === "musicMemory" || mode === "memoryMemomu") {
+    // Add to high scores without name
+    addHighScore(mode, finalScore);
+    
+    // Show score table without buttons for a moment, then transition to post-score state
+    setTimeout(() => {
+      if (mode === "musicMemory") {
+        gameState = "musicmem_post_score";
+      } else if (mode === "memoryMemomu") {
+        gameState = "memory_memomu_post_score";
+      }
+    }, 3000); // Show score for 3 seconds before showing post-score state
+    return;
+  }
+
   gameOverOverlay.active = true;
   gameOverOverlay.mode = mode;
   gameOverOverlay.finalScore = finalScore;
@@ -418,16 +435,24 @@ function hideNameInput() {
 function submitNameInput() {
   const name = nameInput.currentName.trim() || "Anonymous";
   addHighScore(nameInput.mode, nameInput.score, name);
+  const mode = nameInput.mode;
   hideNameInput();
 
-  // Show game over overlay after name submission
-  gameOverOverlay.active = true;
-  gameOverOverlay.mode = nameInput.mode;
-  gameOverOverlay.finalScore = nameInput.score;
-  gameOverOverlay.buttons = [
-    new Button("PLAY AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50),
-    new Button("MENU", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
-  ];
+  // For Music Memory and MEMOMU games, transition to post-score state instead of showing overlay
+  if (mode === "musicMemory") {
+    gameState = "musicmem_post_score";
+  } else if (mode === "memoryMemomu") {
+    gameState = "memory_memomu_post_score";
+  } else {
+    // Show game over overlay after name submission for other modes
+    gameOverOverlay.active = true;
+    gameOverOverlay.mode = mode;
+    gameOverOverlay.finalScore = nameInput.score;
+    gameOverOverlay.buttons = [
+      new Button("PLAY AGAIN", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50),
+      new Button("MENU", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50)
+    ];
+  }
 }
 
 function drawGameOverOverlay() {
@@ -677,9 +702,8 @@ function endMemoryClassicGame() {
 }
 
 function endMemoryMemomuGame() {
-  // For MEMOMU mode, don't use the standard overlay - show custom score table instead
-  // The game completed state is already set by the calling code
-  // Draw function will handle showing the score table with PLAY AGAIN button
+  // Use the same overlay system as Music Memory
+  showGameOverOverlay("memoryMemomu", memomuGame.score);
 }
 
 function endMonluckGame() {
@@ -1968,7 +1992,7 @@ function drawMemoryGameMemomu() {
     ctx.fillText(`Find ${memomuGame.flashSeq.length} images! (${memomuGame.clicksUsed}/${memomuGame.allowedClicks} clicks)`, WIDTH / 2, HEIGHT - 80);
   }
 
-  // Show PLAY AGAIN button on score table when game is completed
+  // Show score table when game is completed
   if (memomuGame.gameCompleted) {
     // Draw score table area instead of regular feedback
     ctx.font = "24px Arial";
@@ -1980,10 +2004,6 @@ function drawMemoryGameMemomu() {
     ctx.font = "18px Arial";
     ctx.fillStyle = "#ffb6c1";
     ctx.fillText(memomuGame.feedback, WIDTH / 2, HEIGHT - 180);
-    
-    // Draw PLAY AGAIN button positioned on the score table
-    let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2, HEIGHT - 110, 200, 50);
-    playAgainButton.draw();
   } else {
     // Feedback (only during gameplay)
     ctx.font = "20px Arial";
@@ -2435,21 +2455,6 @@ canvas.addEventListener("click", function (e) {
       }
     }
   } else if (gameState === "memory_memomu") {
-    // Handle PLAY AGAIN button when game is completed
-    if (memomuGame.gameCompleted) {
-      let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2, HEIGHT - 110, 200, 50);
-      if (playAgainButton.isInside(mx, my)) {
-        // Restart the MEMOMU game without splash
-        gameState = "memory_memomu";
-        memomuGame.showGo = false;
-        startMemoryGameMemomu(false); // No splash for PLAY AGAIN
-        // Start immediately like pressing GO - trigger the flash sequence after a short delay
-        setTimeout(runMemoryMemomuFlashSequence, 900);
-        drawMemoryGameMemomu(); // Redraw the new board
-        return; // Exit early to prevent other click handling
-      }
-    }
-    
     if (memoryMemomuButtons[1].isInside(mx, my)) { gameState = "memory_menu"; }
     else if (memoryMemomuButtons[0].isInside(mx, my) && memomuGame.showGo) {
       memomuGame.showGo = false;
@@ -2540,6 +2545,36 @@ canvas.addEventListener("click", function (e) {
     // Handle back button
     if (leaderboardButtons[0].isInside(mx, my)) {
       gameState = "menu";
+    }
+  } else if (gameState === "musicmem_post_score") {
+    // Handle MENU and PLAY AGAIN buttons in post-score state
+    let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
+    let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
+    
+    if (menuButton.isInside(mx, my)) {
+      gameState = "menu";
+    } else if (playAgainButton.isInside(mx, my)) {
+      // Start new Music Memory game immediately
+      gameState = "musicmem";
+      startMusicMemoryGame(false); // No splash for PLAY AGAIN
+      startMemoryPhase(); // Start immediately like pressing START
+      drawMusicMemory(); // Redraw the new board
+    }
+  } else if (gameState === "memory_memomu_post_score") {
+    // Handle MENU and PLAY AGAIN buttons in post-score state
+    let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
+    let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
+    
+    if (menuButton.isInside(mx, my)) {
+      gameState = "menu";
+    } else if (playAgainButton.isInside(mx, my)) {
+      // Start new MEMOMU game immediately
+      gameState = "memory_memomu";
+      memomuGame.showGo = false;
+      startMemoryGameMemomu(false); // No splash for PLAY AGAIN
+      // Start immediately like pressing GO - trigger the flash sequence after a short delay
+      setTimeout(runMemoryMemomuFlashSequence, 900);
+      drawMemoryGameMemomu(); // Redraw the new board
     }
   }
 });
@@ -2902,6 +2937,39 @@ function tickSplash() {
   }
 }
 
+// --- POST-SCORE DRAWING FUNCTIONS ---
+function drawMusicMemoryPostScore() {
+  // Draw the game board in its final state
+  drawMusicMemory();
+  
+  // Draw overlay for post-score buttons
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  
+  // Draw MENU and PLAY AGAIN buttons
+  let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
+  let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
+  
+  menuButton.draw();
+  playAgainButton.draw();
+}
+
+function drawMemoryMemomuPostScore() {
+  // Draw the game board in its final state
+  drawMemoryGameMemomu();
+  
+  // Draw overlay for post-score buttons
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  
+  // Draw MENU and PLAY AGAIN buttons
+  let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
+  let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
+  
+  menuButton.draw();
+  playAgainButton.draw();
+}
+
 // --- MAIN DRAW LOOP ---
 function draw() {
   if (gameState === "loading") {
@@ -2914,11 +2982,13 @@ function draw() {
   else if (gameState === "mode") drawModeMenu();
   else if (gameState === "musicmem_rules") drawMusicMemoryRules();
   else if (gameState === "musicmem") drawMusicMemory();
+  else if (gameState === "musicmem_post_score") drawMusicMemoryPostScore();
   else if (gameState === "memory_menu") drawMemoryMenu();
   else if (gameState === "memory_classic_rules") drawMemoryClassicRules();
   else if (gameState === "memory_classic") drawMemoryGameClassic();
   else if (gameState === "memory_memomu_rules") drawMemomuMemoryRules();
   else if (gameState === "memory_memomu") drawMemoryGameMemomu();
+  else if (gameState === "memory_memomu_post_score") drawMemoryMemomuPostScore();
   else if (gameState === "monluck") drawMonluckGame();
   else if (gameState === "battle") drawBattleGame();
   else if (gameState === "leaderboard") drawLeaderboard();
