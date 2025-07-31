@@ -3,7 +3,13 @@
    All assets should be in /assets/ folder.
    Canvas ID must be "gameCanvas", size 800x700.
 */
-
+// Set canvas size to fixed 800x700
+window.addEventListener('DOMContentLoaded', function () {
+  const canvas = document.getElementById('gameCanvas');
+  canvas.width = 800;
+  canvas.height = 700;
+  if (typeof draw === "function") draw();
+});
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const WIDTH = canvas.width;
@@ -42,7 +48,7 @@ for (let i = 1; i <= 33; i++) imageFiles.push({ name: `classicimg${i}`, src: `as
 imageFiles.push({ name: `classicmonad`, src: `assets/monad.png` });
 // Don't preload fixed mmimg assets, we'll use the available image pool directly
 // Load 16 battle avatars: A-P, R
-const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'R'];
+const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
 for (let i = 0; i < avatarLetters.length; i++) {
   imageFiles.push({ name: `avatar${i + 1}`, src: `assets/${avatarLetters[i]}.png` });
 }
@@ -251,9 +257,8 @@ let monluckGame = {
 
 // --- BATTLE MODE DATA ---
 const battleNames = [
-  "Benja", "Berzan", "BillMonday", "Claw", "Dreiki", "Eunice", "Fin",
-  "Gleader", "James", "Keone", "KozaBobr", "LeysBobr", "MikeWeb", "Tunez", "Mondalf", "Saddamovic",
-];
+  "Benja", "Berzan", "BillMonday", "Claw", "Dreiki", "John W Rich", "Fin",
+  "Gleader", "Saddamovic", "Keone", "Mondalf", "LeysBobr", "MikeWeb", "Tunez"];
 let battleGame = {
   state: "rules", // rules, choose, vs, end
   phase: "ready", // ready, flash, click, result, countdown
@@ -384,7 +389,7 @@ function showGameOverOverlay(mode, finalScore) {
   if (mode === "musicMemory" || mode === "memoryMemomu") {
     // Add to high scores without name
     addHighScore(mode, finalScore);
-    
+
     // Show score table without buttons for a moment, then transition to post-score state
     setTimeout(() => {
       if (mode === "musicMemory") {
@@ -641,9 +646,12 @@ function drawLeaderboard() {
 
       // Highlight top 3
       if (rank <= 3) {
-        ctx.fillStyle = rank === 1 ? "#ffd700" : rank === 2 ? "#c0c0c0" : "#cd7f32";
+        ctx.fillStyle = rank === 1 ? "#000" : rank === 2 ? "#000" : "#000";
       } else {
         ctx.fillStyle = "#333";
+      }
+      if (rank <= 3) {
+        ctx.fillText("🏆", WIDTH / 2 - 140, y);
       }
 
       ctx.fillText(`${rank}.    ${name}    ${scoreText}`, WIDTH / 2, y);
@@ -718,7 +726,7 @@ function endBattleGame() {
 function setupButtons() {
   menuButtons = [
     new Button("NEW GAME", WIDTH / 2, 400, 240, 70),
-    new Button("", WIDTH - 100, 55, 55, 44, "sound"),
+    new Button("", WIDTH - 100, 40, 55, 44, "sound"),
     new Button("LEADERBOARD", WIDTH / 2, 480, 240, 70),
     new Button("QUIT", WIDTH / 2, 560, 150, 60),
   ];
@@ -737,7 +745,7 @@ function setupButtons() {
     new Button("MENU", WIDTH / 2 + 100, HEIGHT - 80, 180, 50)
   ];
   musicMemButtons = [
-    new Button("START", WIDTH / 2, HEIGHT - 100, 180, 48),
+    new Button("START", WIDTH / 2, HEIGHT - 110, 180, 48),
     new Button("MENU", WIDTH / 2, HEIGHT - 50, 180, 48)
   ];
   let memY = 300;
@@ -901,12 +909,12 @@ function startMemoryPhase() {
   musicMem.phase = "memory";
   musicMem.showPhaseMessage = true;
   musicMem.phaseMessage = "Listen carefully and remember";
-  musicMem.phaseMessageTimer = 60; // 2 seconds
+  musicMem.phaseMessageTimer = 30; // 1 seconds
   musicMem.phaseTimer = 0;
 
   setTimeout(() => {
     playMemorySequence();
-  }, 2000);
+  }, 1000);
 }
 
 function playMemorySequence() {
@@ -953,10 +961,10 @@ function playMemorySequence() {
         drawMusicMemory();
         i++;
         setTimeout(playStep, 300);
-      }, 500);
+      }, 300);
     } else {
       musicMem.playingMelody = false;
-      setTimeout(() => startDeceptionPhase(), 1000);
+      setTimeout(() => startDeceptionPhase(), 500);
     }
   }
   playStep();
@@ -970,7 +978,7 @@ function startDeceptionPhase() {
 
   setTimeout(() => {
     playDeceptionSequence();
-  }, 2000);
+  }, 1000);
 }
 
 function playDeceptionSequence() {
@@ -1014,7 +1022,7 @@ function playDeceptionSequence() {
         drawMusicMemory();
         i++;
         setTimeout(playStep, 300);
-      }, 500);
+      }, 300);
     } else {
       setTimeout(() => startGuessingPhase(), 1000);
     }
@@ -1194,6 +1202,7 @@ function setupClassicRound(round) {
   memoryGame.roundStartTime = performance.now();
   memoryGame.timeRemaining = 30;
 }
+
 
 function startMemoryGameClassic() {
   initializeClassicMemoryUpgraded();
@@ -1999,7 +2008,7 @@ function drawMemoryGameMemomu() {
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.fillText("Final Score: " + memomuGame.score, WIDTH / 2, HEIGHT - 150);
-    
+
     // Show final feedback message above score
     ctx.font = "18px Arial";
     ctx.fillStyle = "#ffb6c1";
@@ -2181,10 +2190,10 @@ function drawBattleGame() {
     ctx.fillStyle = "#836EF9";
     ctx.textAlign = "center";
     ctx.fillText("Choose your fighter!", WIDTH / 2, 60);
-    let img_w = 70, img_h = 70, col1_x = WIDTH / 2 - 300, col2_x = WIDTH / 2 + 20, y_start = 80, y_gap = 34 + img_h / 2;
+    let img_w = 100, img_h = 100, col1_x = WIDTH / 2 - 300, col2_x = WIDTH / 2 + 20, y_start = 80, y_gap = 34 + img_h / 2;
     battleGame.chooseRects = [];
-    // First column: 8 avatars (indices 0-7)
-    for (let i = 0; i < 8; i++) {
+    // First column: avatar1 to avatar7, battleNames[0] to [6]
+    for (let i = 0; i < 7; i++) {
       let img = assets.images[`avatar${i + 1}`];
       let rect = { x: col1_x, y: y_start + i * y_gap, w: img_w, h: img_h };
       if (img) ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
@@ -2194,16 +2203,17 @@ function drawBattleGame() {
       ctx.fillText(battleNames[i], col1_x + img_w + 60, rect.y + img_h / 2 + 8);
       battleGame.chooseRects.push({ ...rect, idx: i });
     }
-    // Second column: 8 avatars (indices 8-15)
-    for (let i = 0; i < 8; i++) {
-      let img = assets.images[`avatar${i + 9}`]; // avatar9 to avatar16
+
+    // Second column: avatar8 to avatar14, battleNames[7] to [13]
+    for (let i = 0; i < 7; i++) {
+      let img = assets.images[`avatar${i + 8}`]; // avatar8 to avatar14
       let rect = { x: col2_x, y: y_start + i * y_gap, w: img_w, h: img_h };
       if (img) ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
       ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
       ctx.font = "24px Arial"; ctx.fillStyle = "#ff69b4";
-      ctx.fillText(battleNames[i + 8], col2_x + img_w + 60, rect.y + img_h / 2 + 8);
-      battleGame.chooseRects.push({ ...rect, idx: i + 8 });
+      ctx.fillText(battleNames[i + 7], col2_x + img_w + 60, rect.y + img_h / 2 + 8);
+      battleGame.chooseRects.push({ ...rect, idx: i + 7 });
     }
   } else if (battleGame.state === "vs" || battleGame.state === "fight") {
     drawBattleGrids();
@@ -2550,7 +2560,7 @@ canvas.addEventListener("click", function (e) {
     // Handle MENU and PLAY AGAIN buttons in post-score state
     let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
     let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
-    
+
     if (menuButton.isInside(mx, my)) {
       gameState = "menu";
     } else if (playAgainButton.isInside(mx, my)) {
@@ -2564,7 +2574,7 @@ canvas.addEventListener("click", function (e) {
     // Handle MENU and PLAY AGAIN buttons in post-score state
     let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
     let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
-    
+
     if (menuButton.isInside(mx, my)) {
       gameState = "menu";
     } else if (playAgainButton.isInside(mx, my)) {
@@ -2941,15 +2951,15 @@ function tickSplash() {
 function drawMusicMemoryPostScore() {
   // Draw the game board in its final state
   drawMusicMemory();
-  
+
   // Draw overlay for post-score buttons
   ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  
+
   // Draw MENU and PLAY AGAIN buttons
   let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
   let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
-  
+
   menuButton.draw();
   playAgainButton.draw();
 }
@@ -2957,15 +2967,15 @@ function drawMusicMemoryPostScore() {
 function drawMemoryMemomuPostScore() {
   // Draw the game board in its final state
   drawMemoryGameMemomu();
-  
+
   // Draw overlay for post-score buttons
   ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  
+
   // Draw MENU and PLAY AGAIN buttons
   let menuButton = new Button("MENU", WIDTH / 2 - 120, HEIGHT / 2 + 80, 200, 50);
   let playAgainButton = new Button("PLAY AGAIN", WIDTH / 2 + 120, HEIGHT / 2 + 80, 200, 50);
-  
+
   menuButton.draw();
   playAgainButton.draw();
 }
@@ -2995,6 +3005,18 @@ function draw() {
 
   // Draw name input overlay on top of everything
   drawNameInput();
+}
+function goFullScreen() {
+  var elem = document.getElementById('gameCanvas'); // Replace with your canvas or main game container id
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen();
+  } else if (elem.mozRequestFullScreen) { // Firefox
+    elem.mozRequestFullScreen();
+  } else if (elem.webkitRequestFullscreen) { // Chrome, Safari and Opera
+    elem.webkitRequestFullscreen();
+  } else if (elem.msRequestFullscreen) { // IE/Edge
+    elem.msRequestFullscreen();
+  }
 }
 
 // --- GAME LOOP ---
