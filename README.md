@@ -26,7 +26,7 @@ A mini games on MONAD hub written in pure JavaScript with HTML5 Canvas. MEMOMU f
 
 ### 5. Battle Mode
 - Choose your fighter avatar
-- Compete against AI in memory challenges  
+- Compete against AI or 1v1 against other player in memory challenges  
 - Strategic gameplay with scoring system
 - Dynamic difficulty adjustment
 
