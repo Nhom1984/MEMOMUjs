@@ -213,7 +213,8 @@ let memoryGame = {
   showClassicStartButton: false, // Show START button after "GOT IT"
   gameCompleted: false,
   allImages: [], // All available images for pairs
-  roundPairCount: 0
+  roundPairCount: 0,
+  gameStarted: false // Track if game has actually started (timer and cards enabled)
 };
 
 // --- MEMOMU MEMORY MODE DATA ---
@@ -1207,6 +1208,7 @@ function setupClassicRound(round) {
   // memoryGame.splashMsg = `Round ${round}`; // REMOVED - no more splash screens
   memoryGame.roundStartTime = performance.now();
   memoryGame.timeRemaining = 30;
+  memoryGame.gameStarted = false; // Cards start disabled
 }
 
 
@@ -1217,6 +1219,7 @@ function startMemoryGameClassic() {
 
 function startClassicRound() {
   setupClassicRound(memoryGame.currentRound);
+  memoryGame.gameStarted = true; // For subsequent rounds, start immediately
   gameState = "memory_classic";
 }
 
@@ -1362,9 +1365,11 @@ function setupMemoryMemomuRound() {
   } else if (n <= 10) {
     memomuGame.timeLimit = n + 2 * (n - 1);
   } else {
-    // For rounds 11-20, scale time limit more generously due to larger grid
+    // For rounds 11-20: +2 seconds base, plus +1 second for each higher round
+    // e.g., round 12 = +3s, round 13 = +4s, etc.
     let baseTime = n + 2 * (n - 1);
-    memomuGame.timeLimit = Math.round(baseTime * 1.5); // 50% more time for 7x7 grid
+    let bonusTime = 2 + (n - 11); // +2 base + 1 per round above 11
+    memomuGame.timeLimit = baseTime + bonusTime;
   }
 
   memomuGame.timer = 0;
@@ -1868,8 +1873,8 @@ function drawMemomuMemoryRules() {
 function drawMemoryGameClassic() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-  // Update timer
-  if (!memoryGame.lock) { // CHANGED: Removed showSplash condition
+  // Update timer only if game has started
+  if (!memoryGame.lock && memoryGame.gameStarted) {
     let elapsed = (performance.now() - memoryGame.roundStartTime) / 1000;
     memoryGame.timeRemaining = Math.max(0, 30 - elapsed);
 
@@ -1893,9 +1898,11 @@ function drawMemoryGameClassic() {
     ctx.fillText(`Best: ${Math.max(bestScore, memoryGame.score)}`, 20, 130);
   }
 
-  // Timer with color coding (red when < 5 seconds)
-  ctx.fillStyle = memoryGame.timeRemaining < 5 ? "#ff0000" : "#ff69b4";
-  ctx.fillText(`Time: ${Math.ceil(memoryGame.timeRemaining)}s`, 20, 100);
+  // Timer with color coding (red when < 5 seconds) - only show if game started
+  if (memoryGame.gameStarted) {
+    ctx.fillStyle = memoryGame.timeRemaining < 5 ? "#ff0000" : "#ff69b4";
+    ctx.fillText(`Time: ${Math.ceil(memoryGame.timeRemaining)}s`, 20, 100);
+  }
 
   // Reset color for title
   ctx.fillStyle = "#836EF9";
@@ -1950,6 +1957,12 @@ function drawMemoryGameClassic() {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.fillText(memoryGame.feedback, WIDTH / 2, HEIGHT - 120);
+
+  // Show START button if game hasn't started yet
+  if (memoryGame.showClassicStartButton && !memoryGame.gameStarted) {
+    let startButton = new Button("START", WIDTH / 2, HEIGHT - 80, 200, 60);
+    startButton.draw();
+  }
 
   // REMOVED: Round splash screen logic - no more splash screens
 
@@ -2278,33 +2291,43 @@ function drawBattleGame() {
   } else if (battleGame.state === "end") {
     ctx.fillStyle = "#222";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    let img_sz = 130;
+    
+    // Avatars are 300% bigger (130px -> 390px) and moved down by 1cm (~38px)
+    let img_sz = 390;
+    let avatar_y = 60 + 38; // Original 60 + 38px (1cm)
     let pimg = assets.images[`avatar${battleGame.player + 1}`];
     let oimg = assets.images[`avatar${battleGame.opponent + 1}`];
-    if (pimg) ctx.drawImage(pimg, 100, 60, img_sz, img_sz);
-    if (oimg) ctx.drawImage(oimg, WIDTH - 230, 60, img_sz, img_sz);
+    if (pimg) ctx.drawImage(pimg, 100, avatar_y, img_sz, img_sz);
+    if (oimg) ctx.drawImage(oimg, WIDTH - 100 - img_sz, avatar_y, img_sz, img_sz);
 
-    // Draw avatar names under their images
+    // Draw avatar names under their images - same size and position under avatars
     ctx.font = "24px Arial";
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     if (battleGame.player !== null) {
-      ctx.fillText(battleNames[battleGame.player], 100 + img_sz / 2, 60 + img_sz + 30);
+      ctx.fillText(battleNames[battleGame.player], 100 + img_sz / 2, avatar_y + img_sz + 30);
     }
     if (battleGame.opponent !== null) {
-      ctx.fillText(battleNames[battleGame.opponent], WIDTH - 230 + img_sz / 2, 60 + img_sz + 30);
+      ctx.fillText(battleNames[battleGame.opponent], WIDTH - 100 - img_sz + img_sz / 2, avatar_y + img_sz + 30);
     }
 
+    // 'vs' text moved 2cm lower (~76px)
     ctx.font = "52px Arial";
     ctx.fillStyle = "#ff69b4";
-    ctx.fillText("VS", WIDTH / 2, 120);
+    ctx.fillText("VS", WIDTH / 2, 120 + 76);
+    
+    // Score numbers moved 2cm lower (~76px) 
     ctx.font = "52px Arial";
-    ctx.fillText(`${battleGame.pscore} : ${battleGame.oscore}`, WIDTH / 2, 200);
+    ctx.fillText(`${battleGame.pscore} : ${battleGame.oscore}`, WIDTH / 2, 200 + 76);
+    
     let msg = battleGame.pscore > battleGame.oscore ? "YOU WIN!" : battleGame.pscore < battleGame.oscore ? "YOU LOSE!" : "DRAW!";
     let color = battleGame.pscore > battleGame.oscore ? "#00ff00" : battleGame.pscore < battleGame.oscore ? "#ff0000" : "#ffb6c1";
     ctx.font = "52px Arial"; ctx.fillStyle = color;
-    ctx.fillText(msg, WIDTH / 2, 300);
-    battleButtons[2].draw();
+    ctx.fillText(msg, WIDTH / 2, 300 + 76);
+    
+    // Back button moved 5cm lower (~190px)
+    let backButton = new Button("BACK", WIDTH / 2, 400 + 190, 170, 60);
+    backButton.draw();
   }
   ctx.font = "16px Arial";
   ctx.fillStyle = "#fff";
@@ -2498,10 +2521,12 @@ canvas.addEventListener("click", function (e) {
     else if (memoryMenuButtons[2].isInside(mx, my)) { gameState = "mode"; }
   } else if (gameState === "memory_classic_rules") {
     if (!memoryGame.showClassicStartButton && memoryClassicRulesButtons[0].isInside(mx, my)) {
-      // "GOT IT" button clicked - show START button
+      // "GOT IT" button clicked - transition to grid page with START button
+      setupClassicRound(memoryGame.currentRound);
+      gameState = "memory_classic";
       memoryGame.showClassicStartButton = true;
     } else if (memoryGame.showClassicStartButton) {
-      // Check if START button was clicked
+      // Check if START button was clicked (should not reach here as we transition to memory_classic)
       let startButton = new Button("START", WIDTH / 2, HEIGHT - 100, 200, 60);
       if (startButton.isInside(mx, my)) {
         startClassicRound();
@@ -2514,7 +2539,19 @@ canvas.addEventListener("click", function (e) {
     }
   } else if (gameState === "memory_classic") {
     if (memoryClassicButtons[0].isInside(mx, my)) { gameState = "menu"; }
-    if (!memoryGame.lock && memoryGame.timeRemaining > 0) { // CHANGED: Removed showSplash condition
+    
+    // Handle START button click if game hasn't started yet
+    if (memoryGame.showClassicStartButton && !memoryGame.gameStarted) {
+      let startButton = new Button("START", WIDTH / 2, HEIGHT - 80, 200, 60);
+      if (startButton.isInside(mx, my)) {
+        memoryGame.gameStarted = true;
+        memoryGame.showClassicStartButton = false;
+        memoryGame.roundStartTime = performance.now(); // Start the timer now
+      }
+    }
+    
+    // Only allow tile clicks if game has started
+    if (!memoryGame.lock && memoryGame.timeRemaining > 0 && memoryGame.gameStarted) {
       for (let i = 0; i < memoryGame.grid.length; i++) {
         let tile = memoryGame.grid[i];
         if (
@@ -2750,7 +2787,8 @@ function handleMemoryTileClickMemomu(idx) {
   let allFound = memomuGame.found.length === memomuGame.flashSeq.length;
   let isPerfect = allFound && memomuGame.clicksUsed === memomuGame.flashSeq.length;
   let maxClicksReached = memomuGame.clicksUsed >= memomuGame.allowedClicks;
-  let tooManyWrongClicks = memomuGame.wrongClicks >= 2; // End after 2 wrong clicks
+  let wrongClickLimit = memomuGame.round > 10 ? 3 : 2; // One more bad click for rounds 11-20
+  let tooManyWrongClicks = memomuGame.wrongClicks >= wrongClickLimit;
   let isComplete = allFound || maxClicksReached || tooManyWrongClicks;
 
   if (isComplete) {
@@ -2819,7 +2857,9 @@ function runMemoryMemomuFlashSequence() {
   memomuGame.grid.forEach((t, j) => t.revealed = flashTiles.includes(j));
   drawMemoryGameMemomu();
 
-  // Keep them revealed for the desired duration (e.g., 1200ms)
+  // Keep them revealed for the desired duration
+  // For rounds 11-20, display 25% longer (1200ms -> 1500ms)
+  let flashDuration = memomuGame.round > 10 ? 1500 : 1200;
   setTimeout(() => {
     // Hide all flashed images
     memomuGame.grid.forEach((t) => t.revealed = false);
@@ -2832,7 +2872,7 @@ function runMemoryMemomuFlashSequence() {
     memomuGame.timeStarted = performance.now() / 1000;
     memomuGame.grid.forEach((t) => { t.feedback = null; });
     drawMemoryGameMemomu();
-  }, 1200); // adjust duration as needed
+  }, flashDuration);
 }
 
 // --- MONLUCK CLICK LOGIC ---
@@ -2950,7 +2990,9 @@ function handleBattleClick(mx, my) {
   }
 
   if (battleGame.state === "end") {
-    if (battleButtons[2].isInside(mx, my)) {
+    // Check if the moved BACK button was clicked
+    let backButton = new Button("BACK", WIDTH / 2, 400 + 190, 170, 60);
+    if (backButton.isInside(mx, my)) {
       resetBattleGame();
       gameState = "mode";
     }
