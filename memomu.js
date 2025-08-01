@@ -46,13 +46,13 @@ for (let i = 1; i <= 6; i++) imageFiles.push({ name: `memimg${i}`, src: `assets/
 // Add all images for upgraded Classic Memory (image1-37 + monad + avatars A-N)
 for (let i = 1; i <= 37; i++) imageFiles.push({ name: `classicimg${i}`, src: `assets/image${i}.png` });
 imageFiles.push({ name: `classicmonad`, src: `assets/monad.png` });
+// Don't preload fixed mmimg assets, we'll use the available image pool directly
+// Load 16 battle avatars: A-P, R
+const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
 // Add avatar images A-N for MEMOMU Memory expanded pool
 for (let i = 0; i < avatarLetters.length; i++) {
   imageFiles.push({ name: `classicavatar${avatarLetters[i]}`, src: `assets/${avatarLetters[i]}.png` });
 }
-// Don't preload fixed mmimg assets, we'll use the available image pool directly
-// Load 16 battle avatars: A-P, R
-const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
 for (let i = 0; i < avatarLetters.length; i++) {
   imageFiles.push({ name: `avatar${i + 1}`, src: `assets/${avatarLetters[i]}.png` });
 }
@@ -1278,7 +1278,6 @@ function startMemoryGameMemomu(showSplash = false) { // CHANGED: Default to no s
     memomuGame.imagePool.push(i);
   }
   // Add avatar images A-N
-  const avatarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
   for (let letter of avatarLetters) {
     memomuGame.imagePool.push(`avatar${letter}`);
   }
@@ -1787,7 +1786,7 @@ function drawMemoryClassicRules() {
   ctx.fillText("FIND PAIRS", WIDTH / 2, 180);
 
   ctx.font = "20px Arial";
-  ctx.fillText("You have 5 rounds with progressive grid,", WIDTH / 2, 250);
+  ctx.fillText("You have 10 rounds with progressive grid,", WIDTH / 2, 250);
   ctx.fillText("Your best score goes for leaderboard,", WIDTH / 2, 280);
   ctx.fillText("Top 5 shares memomu treasure at the end of the week.", WIDTH / 2, 310);
 
@@ -1839,6 +1838,9 @@ function drawMemomuMemoryRules() {
   let lineHeight = 28;
 
   const rules = [
+    "• Game has 20 rounds with progressive difficulty",
+    "• Rounds 1-10: 6×5 grid (30 tiles)",
+    "• Rounds 11-20: 7×7 grid (49 tiles) with expanded image pool",
     "• Every round progressive number of images will appear on the screen",
     "• You have to find them all to progress to the next round",
     "• Each round you have number of images shown + one, clicks",
