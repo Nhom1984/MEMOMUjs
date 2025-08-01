@@ -1,6 +1,6 @@
-# MEMOMU Game
+# MEMOMU HUB
 
-A complete memory and music game written in pure JavaScript with HTML5 Canvas. MEMOMU features multiple game modes including music memory challenges, classic memory matching, pattern recognition, and AI battle modes.
+A mini games on MONAD hub written in pure JavaScript with HTML5 Canvas. MEMOMU features multiple game modes including music memory challenges, classic memory matching, pattern recognition, and AI and 1vs1 battle mode and monluck- lucky hit game.
 
 ## 🎮 Game Modes
 
